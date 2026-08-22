@@ -83,6 +83,38 @@ Complete these BEFORE launching the EC2 instance:
 
 ---
 
+## ⭐ **RECOMMENDED: GitHub-Based Deployment**
+
+**Cleanest approach** - Deploy directly from your GitHub repository with zero code duplication.
+
+### Why GitHub Deployment?
+✅ **Single source of truth** - Code lives in GitHub only  
+✅ **Zero duplication** - No embedded code in deployment scripts  
+✅ **Auto-updates** - New instances pull latest code from repo  
+✅ **Team-friendly** - Full Git workflow for collaboration  
+✅ **CI/CD ready** - Extensible to automation  
+
+### Quick Start with GitHub
+
+```bash
+# Generate script (includes GitHub repo config)
+./app-structure/config-generator.sh
+
+# Select: Option 2
+# Answer prompts (GitHub URL is pre-configured)
+# Script is generated with your database credentials
+
+# Copy to clipboard
+cat generated/userdata-custom.sh | pbcopy
+
+# Launch EC2 instance → Paste userdata → Done!
+# Script auto-clones from GitHub and deploys
+```
+
+📖 **See:** `GITHUB_DEPLOYMENT_GUIDE.md` ← Complete GitHub deployment guide
+
+---
+
 ## 🎯 Quick Start (20 Minutes)
 
 ### ⭐ **Fastest Path - Complete End-to-End Guide**

@@ -142,6 +142,27 @@ router.get('/', async (req, res) => {
               padding-top: 20px;
             }
 
+            .reset-button {
+              background: #ef4444;
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              border-radius: 6px;
+              font-size: 14px;
+              font-weight: 500;
+              cursor: pointer;
+              margin-top: 15px;
+              transition: background 0.2s;
+            }
+
+            .reset-button:hover {
+              background: #dc2626;
+            }
+
+            .reset-button:active {
+              transform: scale(0.98);
+            }
+
             @media (max-width: 480px) {
               .container {
                 padding: 30px 20px;
@@ -165,11 +186,21 @@ router.get('/', async (req, res) => {
             </div>
 
             <div class="timestamp">Last hit: ${lastHit}</div>
-            <div class="status">✓ Database Connected</div>
+            <div class="status">&#10003; Database Connected</div>
             <div class="db-info">Database: ${dbTypeLabel}</div>
 
             <div class="footer">
               <p>Refresh to increment counter</p>
+              <button class="reset-button" onclick="resetCounter()">Reset Counter</button>
+              <script>
+                function resetCounter() {
+                  if (confirm('Are you sure you want to reset the counter to 0?')) {
+                    fetch('/reset', { method: 'POST' })
+                      .then(() => location.reload())
+                      .catch(err => alert('Error: ' + err.message));
+                  }
+                }
+              </script>
             </div>
           </div>
         </body>
@@ -260,6 +291,20 @@ router.get('/api/hits', async (req, res) => {
     res.status(500).json({
       error: error.message
     });
+  }
+});
+
+/**
+ * Reset endpoint - resets hit counter to 0
+ */
+router.post('/reset', async (req, res) => {
+  try {
+    await db.resetCounter();
+    logger.info('Hit counter reset via API');
+    res.status(200).json({ status: 'reset', message: 'Counter reset to 0' });
+  } catch (error) {
+    logger.error(`Error resetting counter: ${error.message}`);
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -13,6 +13,8 @@ let pool = null;
  */
 async function initializePool() {
   try {
+    const isRDS = config.database.endpoint && config.database.endpoint.includes('rds');
+
     if (config.database.type === 'postgres') {
       const { Pool } = require('pg');
       const poolConfig = {
@@ -22,12 +24,15 @@ async function initializePool() {
         database: config.database.name,
         port: config.database.port
       };
-      if (config.database.endpoint && config.database.endpoint.includes('rds')) {
+      if (isRDS) {
         poolConfig.ssl = { rejectUnauthorized: false };
       }
       pool = new Pool(poolConfig);
 
       logger.info(`PostgreSQL pool created (${config.database.endpoint}:${config.database.port})`);
+      if (isRDS) {
+        logger.info('SSL enabled for RDS');
+      }
     } else if (config.database.type === 'mysql') {
       const mysql = require('mysql2/promise');
       const mysqlConfig = {
@@ -40,12 +45,15 @@ async function initializePool() {
         connectionLimit: 10,
         queueLimit: 0
       };
-      if (config.database.endpoint && config.database.endpoint.includes('rds')) {
+      if (isRDS) {
         mysqlConfig.ssl = 'amazon';
       }
       pool = mysql.createPool(mysqlConfig);
 
       logger.info(`MySQL pool created (${config.database.endpoint}:${config.database.port})`);
+      if (isRDS) {
+        logger.info('SSL enabled for RDS (Amazon mode)');
+      }
     }
 
     return pool;
@@ -219,6 +227,37 @@ async function incrementCounter() {
 }
 
 /**
+ * Reset hit counter to 0
+ */
+async function resetCounter() {
+  try {
+    if (config.database.type === 'postgres') {
+      const client = await pool.connect();
+      try {
+        await client.query(
+          'UPDATE hits SET hit_count = 0, last_hit = CURRENT_TIMESTAMP WHERE id = 1'
+        );
+      } finally {
+        client.release();
+      }
+    } else if (config.database.type === 'mysql') {
+      const connection = await pool.getConnection();
+      try {
+        await connection.execute(
+          'UPDATE hits SET hit_count = 0 WHERE id = 1'
+        );
+      } finally {
+        connection.release();
+      }
+    }
+    logger.info('Hit counter reset to 0');
+  } catch (error) {
+    logger.error(`Failed to reset counter: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
  * Close database connections
  */
 async function closePool() {
@@ -242,6 +281,7 @@ module.exports = {
   healthCheck,
   getHitData,
   incrementCounter,
+  resetCounter,
   closePool,
   getPool: () => pool
 };

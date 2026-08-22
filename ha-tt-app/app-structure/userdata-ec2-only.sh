@@ -2,12 +2,9 @@
 # ============================================
 # EC2 User Data Script - Web Server Setup
 # ============================================
-# PURPOSE: Set up EC2 instance with Node.js + Nginx
-# SCOPE: EC2 instance setup ONLY
-# NOT: RDS, databases, or external infrastructure
-#
-# Database configuration is passed via environment variables
-# The application will handle database operations
+# PURPOSE: Set up EC2 instance with Node.js + App
+# USES: Application code from GitHub or local package
+# CONFIG: Database credentials passed via environment
 
 set -e
 exec > >(tee /var/log/user-data.log)
@@ -16,7 +13,6 @@ exec 2>&1
 # ============================================
 # CONFIGURATION
 # ============================================
-# Database configuration (passed to application via environment)
 DB_TYPE="postgres"
 DB_ENDPOINT="your-db-endpoint.rds.amazonaws.com"
 DB_USER="postgres"
@@ -25,6 +21,12 @@ DB_NAME="ha-tt-db"
 DB_PORT="5432"
 APP_PORT=8000
 APP_DIR="/opt/app"
+
+# GitHub repository configuration
+# Set to clone from repo, or leave empty to use embedded code
+GITHUB_REPO="https://github.com/dev-enthusiast-84/dmi-c3-g3-demo-apps.git"
+GITHUB_BRANCH="main"
+GITHUB_APP_PATH="ha-tt-app/app-structure"
 
 echo "=== EC2 User Data Script - Web Server Setup ==="
 echo "Configuration:"
@@ -62,10 +64,30 @@ echo "Creating application directory: $APP_DIR"
 mkdir -p $APP_DIR
 cd $APP_DIR
 
-# Deploy from embedded application code
-echo "Deploying application code..."
+# Option A: Clone from GitHub (if GITHUB_REPO is set)
+if [ -n "$GITHUB_REPO" ]; then
+  echo "Installing Git..."
+  apt-get install -y git > /dev/null 2>&1
 
-cat > package.json <<'PACKAGE_EOF'
+  echo "Cloning application from GitHub..."
+  git clone --branch "$GITHUB_BRANCH" --depth 1 "$GITHUB_REPO" temp-repo
+
+  echo "Copying application files from $GITHUB_APP_PATH..."
+  if [ -d "temp-repo/$GITHUB_APP_PATH" ]; then
+    cp -r temp-repo/$GITHUB_APP_PATH/* .
+    rm -rf temp-repo
+    echo "✓ Application cloned from GitHub ($GITHUB_BRANCH branch)"
+  else
+    echo "✗ Error: Could not find $GITHUB_APP_PATH in repository"
+    rm -rf temp-repo
+    exit 1
+  fi
+else
+  # Option B: Use embedded application code (below)
+  echo "Deploying embedded application code..."
+
+  # Package.json
+  cat > package.json <<'PACKAGE_EOF'
 {
   "name": "hit-counter-app",
   "version": "2.0.0",
@@ -83,174 +105,493 @@ cat > package.json <<'PACKAGE_EOF'
 }
 PACKAGE_EOF
 
-cat > index.js <<'APP_EOF'
-const express = require('express');
-const { Pool } = require('pg');
-const mysql = require('mysql2/promise');
+  # config.js
+  cat > config.js <<'CONFIG_EOF'
 require('dotenv').config();
 
-const app = express();
-const port = process.env.APP_PORT || 8000;
-const dbType = process.env.DB_TYPE || 'postgres';
-
-let pool;
-
-const dbConfig = {
-  host: process.env.DB_ENDPOINT || 'localhost',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME || 'ha-tt-db',
-  port: parseInt(process.env.DB_PORT || '5432')
+const config = {
+  app: {
+    port: parseInt(process.env.APP_PORT || '8000'),
+    env: process.env.NODE_ENV || 'development'
+  },
+  database: {
+    type: process.env.DB_TYPE || 'postgres',
+    endpoint: process.env.DB_ENDPOINT || 'localhost',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD,
+    name: process.env.DB_NAME || 'ha-tt-db',
+    port: parseInt(process.env.DB_PORT || '5432')
+  }
 };
 
-// Enable SSL for RDS
-if (process.env.DB_ENDPOINT && process.env.DB_ENDPOINT.includes('rds')) {
-  dbConfig.ssl = { rejectUnauthorized: false };
+function validateConfig() {
+  const required = ['DB_ENDPOINT', 'DB_USER', 'DB_PASSWORD'];
+  const missing = required.filter(key => !process.env[key]);
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+
+  if (!['postgres', 'mysql'].includes(config.database.type)) {
+    throw new Error(`Invalid DB_TYPE: ${config.database.type}`);
+  }
+
+  return true;
 }
 
-async function initializeDatabase() {
+module.exports = { config, validateConfig };
+CONFIG_EOF
+
+  # db.js
+  cat > db.js <<'DB_EOF'
+const { config } = require('./config');
+
+let pool = null;
+
+async function initializePool() {
   try {
-    if (dbType === 'postgres') {
-      pool = new Pool(dbConfig);
+    const isRDS = config.database.endpoint && config.database.endpoint.includes('rds');
+
+    if (config.database.type === 'postgres') {
+      const { Pool } = require('pg');
+      const poolConfig = {
+        host: config.database.endpoint,
+        user: config.database.user,
+        password: config.database.password,
+        database: config.database.name,
+        port: config.database.port
+      };
+      if (isRDS) {
+        poolConfig.ssl = { rejectUnauthorized: false };
+      }
+      pool = new Pool(poolConfig);
       console.log('PostgreSQL pool created');
-    } else {
-      pool = mysql.createPool(dbConfig);
+      if (isRDS) console.log('SSL enabled for RDS');
+    } else if (config.database.type === 'mysql') {
+      const mysql = require('mysql2/promise');
+      const mysqlConfig = {
+        host: config.database.endpoint,
+        user: config.database.user,
+        password: config.database.password,
+        database: config.database.name,
+        port: config.database.port,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
+      };
+      if (isRDS) {
+        mysqlConfig.ssl = 'amazon';
+      }
+      pool = mysql.createPool(mysqlConfig);
       console.log('MySQL pool created');
+      if (isRDS) console.log('SSL enabled for RDS (Amazon mode)');
     }
+
+    return pool;
   } catch (error) {
-    console.error('Database pool error:', error.message);
-    process.exit(1);
+    console.error('Failed to create database pool:', error.message);
+    throw error;
   }
 }
 
-async function createTableIfNotExists() {
+async function initializeTables() {
   try {
-    if (dbType === 'postgres') {
+    if (config.database.type === 'postgres') {
       const client = await pool.connect();
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS hits (
-          id SERIAL PRIMARY KEY,
-          hit_count INT DEFAULT 0,
-          last_hit TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      client.release();
-    } else {
-      const conn = await pool.getConnection();
-      await conn.execute(`
-        CREATE TABLE IF NOT EXISTS hits (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          hit_count INT DEFAULT 0,
-          last_hit TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )
-      `);
-      conn.release();
+      try {
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS hits (
+            id SERIAL PRIMARY KEY,
+            hit_count INT DEFAULT 0,
+            last_hit TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+      } finally {
+        client.release();
+      }
+    } else if (config.database.type === 'mysql') {
+      const connection = await pool.getConnection();
+      try {
+        await connection.execute(`
+          CREATE TABLE IF NOT EXISTS hits (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            hit_count INT DEFAULT 0,
+            last_hit TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          )
+        `);
+      } finally {
+        connection.release();
+      }
     }
-    console.log('Hits table ready');
+    console.log('Hits table initialized');
   } catch (error) {
-    console.error('Table creation error:', error.message);
-    process.exit(1);
+    console.error('Failed to initialize tables:', error.message);
+    throw error;
   }
 }
 
 async function initializeCounter() {
   try {
-    if (dbType === 'postgres') {
+    if (config.database.type === 'postgres') {
       const client = await pool.connect();
-      const result = await client.query('SELECT COUNT(*) as count FROM hits');
-      if (parseInt(result.rows[0].count) === 0) {
-        await client.query('INSERT INTO hits (hit_count) VALUES (0)');
+      try {
+        const result = await client.query('SELECT COUNT(*) as count FROM hits');
+        if (parseInt(result.rows[0].count) === 0) {
+          await client.query('INSERT INTO hits (hit_count) VALUES (0)');
+        }
+      } finally {
+        client.release();
       }
-      client.release();
-    } else {
-      const conn = await pool.getConnection();
-      const [rows] = await conn.execute('SELECT COUNT(*) as count FROM hits');
-      if (rows[0].count === 0) {
-        await conn.execute('INSERT INTO hits (hit_count) VALUES (0)');
+    } else if (config.database.type === 'mysql') {
+      const connection = await pool.getConnection();
+      try {
+        const [rows] = await connection.execute('SELECT COUNT(*) as count FROM hits');
+        if (rows[0].count === 0) {
+          await connection.execute('INSERT INTO hits (hit_count) VALUES (0)');
+        }
+      } finally {
+        connection.release();
       }
-      conn.release();
     }
-    console.log('Hit counter ready');
+    console.log('Hit counter initialized');
   } catch (error) {
-    console.error('Counter initialization error:', error.message);
-    process.exit(1);
+    console.error('Failed to initialize counter:', error.message);
+    throw error;
   }
 }
 
-app.get('/health', async (req, res) => {
+async function healthCheck() {
   try {
-    if (dbType === 'postgres') {
+    if (config.database.type === 'postgres') {
       const client = await pool.connect();
-      await client.query('SELECT NOW()');
-      client.release();
-    } else {
-      const conn = await pool.getConnection();
-      await conn.ping();
-      conn.release();
+      try {
+        await client.query('SELECT NOW()');
+      } finally {
+        client.release();
+      }
+    } else if (config.database.type === 'mysql') {
+      const connection = await pool.getConnection();
+      try {
+        await connection.ping();
+      } finally {
+        connection.release();
+      }
     }
-    res.json({ status: 'healthy', db: dbType });
+    return true;
   } catch (error) {
+    console.error('Health check failed:', error.message);
+    return false;
+  }
+}
+
+async function getHitData() {
+  try {
+    if (config.database.type === 'postgres') {
+      const client = await pool.connect();
+      try {
+        const result = await client.query('SELECT hit_count, last_hit FROM hits WHERE id = 1');
+        return result.rows[0];
+      } finally {
+        client.release();
+      }
+    } else if (config.database.type === 'mysql') {
+      const connection = await pool.getConnection();
+      try {
+        const [rows] = await connection.execute('SELECT hit_count, last_hit FROM hits WHERE id = 1');
+        return rows[0];
+      } finally {
+        connection.release();
+      }
+    }
+  } catch (error) {
+    console.error('Failed to get hit data:', error.message);
+    throw error;
+  }
+}
+
+async function incrementCounter() {
+  try {
+    if (config.database.type === 'postgres') {
+      const client = await pool.connect();
+      try {
+        await client.query('UPDATE hits SET hit_count = hit_count + 1, last_hit = CURRENT_TIMESTAMP WHERE id = 1');
+      } finally {
+        client.release();
+      }
+    } else if (config.database.type === 'mysql') {
+      const connection = await pool.getConnection();
+      try {
+        await connection.execute('UPDATE hits SET hit_count = hit_count + 1 WHERE id = 1');
+      } finally {
+        connection.release();
+      }
+    }
+  } catch (error) {
+    console.error('Failed to increment counter:', error.message);
+    throw error;
+  }
+}
+
+async function resetCounter() {
+  try {
+    if (config.database.type === 'postgres') {
+      const client = await pool.connect();
+      try {
+        await client.query('UPDATE hits SET hit_count = 0, last_hit = CURRENT_TIMESTAMP WHERE id = 1');
+      } finally {
+        client.release();
+      }
+    } else if (config.database.type === 'mysql') {
+      const connection = await pool.getConnection();
+      try {
+        await connection.execute('UPDATE hits SET hit_count = 0 WHERE id = 1');
+      } finally {
+        connection.release();
+      }
+    }
+    console.log('Hit counter reset to 0');
+  } catch (error) {
+    console.error('Failed to reset counter:', error.message);
+    throw error;
+  }
+}
+
+async function closePool() {
+  try {
+    if (config.database.type === 'postgres' && pool) {
+      await pool.end();
+      console.log('PostgreSQL pool closed');
+    } else if (config.database.type === 'mysql' && pool) {
+      await pool.end();
+      console.log('MySQL pool closed');
+    }
+  } catch (error) {
+    console.error('Error closing pool:', error.message);
+  }
+}
+
+module.exports = {
+  initializePool,
+  initializeTables,
+  initializeCounter,
+  healthCheck,
+  getHitData,
+  incrementCounter,
+  resetCounter,
+  closePool,
+  getPool: () => pool
+};
+DB_EOF
+
+  # server.js
+  cat > server.js <<'SERVER_EOF'
+const express = require('express');
+const { config } = require('./config');
+
+function createServer() {
+  const app = express();
+
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      console.log(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+    });
+    next();
+  });
+
+  app.get('/health', (req, res) => {
+    res.status(200).json({
+      status: 'ready',
+      uptime: process.uptime(),
+      database: config.database.type
+    });
+  });
+
+  app.use(require('./routes'));
+
+  app.use((req, res) => {
+    res.status(404).json({ error: 'Not Found', path: req.path });
+  });
+
+  app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err.message);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: config.app.env === 'development' ? err.message : undefined
+    });
+  });
+
+  return app;
+}
+
+module.exports = createServer;
+SERVER_EOF
+
+  # routes.js (simplified - without all the embedded HTML styling)
+  cat > routes.js <<'ROUTES_EOF'
+const express = require('express');
+const db = require('./db');
+const { config } = require('./config');
+
+const router = express.Router();
+
+const HTML_TEMPLATE = (hitCount, lastHit, dbType) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hit Counter</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; margin: 0; padding: 20px; }
+    .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px; width: 100%; text-align: center; }
+    .label { font-size: 18px; color: #666; margin-bottom: 15px; font-weight: 500; }
+    .count { font-size: 72px; font-weight: bold; color: #667eea; margin: 20px 0; }
+    .timestamp { font-size: 13px; color: #999; margin-top: 25px; }
+    .status { background: #d1fae5; color: #065f46; padding: 12px 16px; border-radius: 6px; margin-top: 20px; font-size: 12px; border: 1px solid #a7f3d0; }
+    .db-info { background: #eff6ff; color: #1e40af; padding: 12px 16px; border-radius: 6px; margin-top: 15px; font-size: 12px; border: 1px solid #bfdbfe; }
+    .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
+    .reset-button { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 15px; transition: background 0.2s; }
+    .reset-button:hover { background: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="label">Total Page Hits</div>
+    <div class="count">${hitCount}</div>
+    <div class="timestamp">Last hit: ${lastHit}</div>
+    <div class="status">&#10003; Database Connected</div>
+    <div class="db-info">Database: ${dbType === 'postgres' ? 'PostgreSQL' : 'MySQL'}</div>
+    <div class="footer">
+      <p>Refresh to increment counter</p>
+      <button class="reset-button" onclick="if (confirm('Reset counter to 0?')) { fetch('/reset', { method: 'POST' }).then(() => location.reload()); }">Reset Counter</button>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+router.get('/health', async (req, res) => {
+  try {
+    const isHealthy = await db.healthCheck();
+    res.status(isHealthy ? 200 : 503).json({
+      status: isHealthy ? 'healthy' : 'unhealthy',
+      db: config.database.type
+    });
+  } catch (error) {
+    console.error('Health check error:', error.message);
     res.status(503).json({ status: 'unhealthy', error: error.message });
   }
 });
 
-app.get('/', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    if (dbType === 'postgres') {
-      const client = await pool.connect();
-      await client.query('UPDATE hits SET hit_count = hit_count + 1, last_hit = CURRENT_TIMESTAMP WHERE id = 1');
-      const result = await client.query('SELECT hit_count, last_hit FROM hits WHERE id = 1');
-      client.release();
-      const { hit_count, last_hit } = result.rows[0];
-
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-          <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width">
-          <title>Hit Counter</title>
-          <style>body{font-family:Arial;text-align:center;margin-top:50px;background:#f5f5f5}.container{background:#fff;padding:40px;border-radius:10px;width:400px;margin:0 auto;box-shadow:0 2px 10px rgba(0,0,0,.1)}.count{font-size:56px;font-weight:bold;color:#2563eb;margin:20px 0}.label{font-size:20px;color:#666}.timestamp{font-size:14px;color:#999;margin-top:30px}.status{background:#d1fae5;color:#065f46;padding:10px;border-radius:5px;margin-top:20px;font-size:12px}</style>
-          </head><body><div class="container"><div class="label">Total Page Hits</div><div class="count">${hit_count}</div><div class="timestamp">Last hit: ${new Date(last_hit).toLocaleString()}</div><div class="status">✓ Connected to ${dbType}</div></div></body>
-        </html>
-      `);
-    } else {
-      const conn = await pool.getConnection();
-      await conn.execute('UPDATE hits SET hit_count = hit_count + 1 WHERE id = 1');
-      const [rows] = await conn.execute('SELECT hit_count, last_hit FROM hits WHERE id = 1');
-      conn.release();
-      const { hit_count, last_hit } = rows[0];
-
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-          <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width">
-          <title>Hit Counter</title>
-          <style>body{font-family:Arial;text-align:center;margin-top:50px;background:#f5f5f5}.container{background:#fff;padding:40px;border-radius:10px;width:400px;margin:0 auto;box-shadow:0 2px 10px rgba(0,0,0,.1)}.count{font-size:56px;font-weight:bold;color:#2563eb;margin:20px 0}.label{font-size:20px;color:#666}.timestamp{font-size:14px;color:#999;margin-top:30px}.status{background:#d1fae5;color:#065f46;padding:10px;border-radius:5px;margin-top:20px;font-size:12px}</style>
-          </head><body><div class="container"><div class="label">Total Page Hits</div><div class="count">${hit_count}</div><div class="timestamp">Last hit: ${new Date(last_hit).toLocaleString()}</div><div class="status">✓ Connected to ${dbType}</div></div></body>
-        </html>
-      `);
-    }
+    await db.incrementCounter();
+    const hitData = await db.getHitData();
+    const lastHit = new Date(hitData.last_hit).toLocaleString();
+    res.status(200).send(HTML_TEMPLATE(hitData.hit_count, lastHit, config.database.type));
   } catch (error) {
+    console.error('Error in main route:', error.message);
     res.status(500).send(`<html><body style="text-align:center;margin-top:50px"><h1>Error</h1><p>${error.message}</p></body></html>`);
   }
 });
 
-async function start() {
+router.get('/api/hits', async (req, res) => {
   try {
-    await initializeDatabase();
-    await createTableIfNotExists();
-    await initializeCounter();
-
-    app.listen(port, () => {
-      console.log(`Application listening on port ${port}`);
+    const hitData = await db.getHitData();
+    res.status(200).json({
+      hits: hitData.hit_count,
+      lastHit: hitData.last_hit,
+      database: config.database.type
     });
   } catch (error) {
-    console.error('Failed to start:', error.message);
+    console.error('Error in API route:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/reset', async (req, res) => {
+  try {
+    await db.resetCounter();
+    res.status(200).json({ status: 'reset', message: 'Counter reset to 0' });
+  } catch (error) {
+    console.error('Error resetting counter:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
+ROUTES_EOF
+
+  # index.js
+  cat > index.js <<'INDEX_EOF'
+const { config, validateConfig } = require('./config');
+const db = require('./db');
+const createServer = require('./server');
+
+async function start() {
+  try {
+    console.log('Starting Hit Counter Application');
+    console.log(`Environment: ${config.app.env}`);
+    console.log(`Database: ${config.database.type} (${config.database.endpoint}:${config.database.port})`);
+
+    validateConfig();
+    console.log('Configuration validated');
+
+    await db.initializePool();
+    await db.initializeTables();
+    await db.initializeCounter();
+    console.log('Database initialized');
+
+    const app = createServer();
+    const server = app.listen(config.app.port, () => {
+      console.log(`Server listening on port ${config.app.port}`);
+      console.log(`Application ready at http://localhost:${config.app.port}`);
+    });
+
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM signal received: closing HTTP server');
+      server.close(async () => {
+        console.log('HTTP server closed');
+        await db.closePool();
+        process.exit(0);
+      });
+    });
+
+    process.on('SIGINT', () => {
+      console.log('SIGINT signal received: closing HTTP server');
+      server.close(async () => {
+        console.log('HTTP server closed');
+        await db.closePool();
+        process.exit(0);
+      });
+    });
+
+  } catch (error) {
+    console.error(`Failed to start application: ${error.message}`);
+    console.error(error.stack);
     process.exit(1);
   }
 }
 
 start();
-APP_EOF
+INDEX_EOF
+
+fi
+
+echo "Installing npm dependencies..."
+npm install --production
+
+echo "✓ Application deployment complete"
+
+# ============================================
+# SECTION 3: Environment Configuration
+# ============================================
+echo "=== Section 3: Configuration ==="
 
 cat > .env <<ENV_EOF
 DB_TYPE=$DB_TYPE
@@ -263,15 +604,13 @@ APP_PORT=$APP_PORT
 NODE_ENV=production
 ENV_EOF
 
-echo "Installing npm dependencies..."
-npm install --production
-
-echo "✓ Application deployment complete"
+chmod 600 .env
+echo "✓ Environment configured"
 
 # ============================================
-# SECTION 3: Nginx Configuration
+# SECTION 4: Nginx Configuration
 # ============================================
-echo "=== Section 3: Nginx Configuration ==="
+echo "=== Section 4: Nginx Configuration ==="
 
 cat > /etc/nginx/sites-available/default <<'NGINX_EOF'
 server {
@@ -298,76 +637,12 @@ NGINX_EOF
 nginx -t
 systemctl reload nginx
 
-echo "✓ Nginx configuration complete"
+echo "✓ Nginx configured"
 
 # ============================================
-# SECTION 3.5: Database Initialization
+# SECTION 5: Systemd Service
 # ============================================
-echo "=== Section 3.5: Database Initialization ==="
-
-# Create database-init.sh inline
-cat > /tmp/database-init.sh <<'DB_INIT_EOF'
-#!/bin/bash
-# Database initialization script
-set -e
-
-DB_TYPE="$1"
-DB_ENDPOINT="$2"
-DB_USER="$3"
-DB_PASSWORD="$4"
-DB_NAME="$5"
-DB_PORT="${6:-5432}"
-
-export PGPASSWORD="$DB_PASSWORD"
-
-if [ "$DB_TYPE" = "postgres" ]; then
-  echo "Installing PostgreSQL client..."
-  apt-get install -y postgresql-client > /dev/null 2>&1
-
-  echo "Testing connection to RDS..."
-  if ! psql -h "$DB_ENDPOINT" -U "$DB_USER" -p "$DB_PORT" -d "postgres" -c "SELECT 1;" > /dev/null 2>&1; then
-    echo "❌ Cannot connect to RDS - database may not be ready yet"
-    exit 1
-  fi
-  echo "✓ Connection successful"
-
-  DB_EXISTS=$(psql -h "$DB_ENDPOINT" -U "$DB_USER" -p "$DB_PORT" -d "postgres" -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME';" 2>/dev/null || echo "")
-
-  if [ -z "$DB_EXISTS" ]; then
-    echo "Creating database: $DB_NAME"
-    psql -h "$DB_ENDPOINT" -U "$DB_USER" -p "$DB_PORT" -d "postgres" -c "CREATE DATABASE \"$DB_NAME\";"
-    echo "✓ Database created"
-  else
-    echo "✓ Database already exists"
-  fi
-
-  echo "Creating table: hits"
-  psql -h "$DB_ENDPOINT" -U "$DB_USER" -d "$DB_NAME" -p "$DB_PORT" <<EOF
-CREATE TABLE IF NOT EXISTS hits (
-  id SERIAL PRIMARY KEY,
-  hit_count INT DEFAULT 0,
-  last_hit TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-INSERT INTO hits (hit_count) VALUES (0) ON CONFLICT DO NOTHING;
-EOF
-  echo "✓ Table ready"
-fi
-DB_INIT_EOF
-
-chmod +x /tmp/database-init.sh
-
-# Run database initialization
-echo "Initializing database..."
-if /tmp/database-init.sh "$DB_TYPE" "$DB_ENDPOINT" "$DB_USER" "$DB_PASSWORD" "$DB_NAME" "$DB_PORT" 2>&1; then
-  echo "✓ Database initialization complete"
-else
-  echo "⚠ Database initialization failed (will retry when app starts)"
-fi
-
-# ============================================
-# SECTION 4: Service Setup
-# ============================================
-echo "=== Section 4: Service Setup ==="
+echo "=== Section 5: Service Setup ==="
 
 cat > /etc/systemd/system/app.service <<'SERVICE_EOF'
 [Unit]
@@ -389,18 +664,9 @@ SERVICE_EOF
 
 systemctl daemon-reload
 systemctl enable app
-
-echo "✓ Service setup complete"
-
-# ============================================
-# SECTION 5: Service Startup
-# ============================================
-echo "=== Section 5: Starting Services ==="
-
 systemctl start app
-systemctl restart nginx
 
-sleep 3
+sleep 2
 
 if systemctl is-active --quiet app; then
   echo "✓ Application service is running"
@@ -408,6 +674,8 @@ else
   echo "✗ Application service failed to start"
   systemctl status app
 fi
+
+systemctl restart nginx
 
 if systemctl is-active --quiet nginx; then
   echo "✓ Nginx is running"
@@ -418,14 +686,20 @@ fi
 echo ""
 echo "=== EC2 Setup Complete ==="
 
-# Get instance IP from EC2 metadata (works automatically on EC2)
-INSTANCE_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || echo "YOUR_INSTANCE_IP")
+INSTANCE_IP=$(curl -s --max-time 2 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
 
-echo "Application will be available at: http://${INSTANCE_IP}"
+if [ -z "$INSTANCE_IP" ]; then
+  INSTANCE_IP="[Get from AWS Console]"
+  IP_NOTE=" (Check AWS Console → EC2 → Instances for your public IP)"
+else
+  IP_NOTE=""
+fi
+
+echo "Application will be available at: http://${INSTANCE_IP}${IP_NOTE}"
 echo "Health check: http://${INSTANCE_IP}/health"
 echo ""
 echo "Next steps:"
-echo "1. Get your instance IP from AWS Console (EC2 → Instances)"
+echo "1. Wait 1-2 minutes for the application to be ready"
 echo "2. Access application: http://${INSTANCE_IP}"
-echo "3. Monitor logs: sudo journalctl -u app -f"
-echo "4. View user data logs: sudo tail -f /var/log/user-data.log"
+echo "3. Monitor logs: ssh -i your-keypair.pem ubuntu@${INSTANCE_IP}"
+echo "   Then: sudo journalctl -u app -f"
