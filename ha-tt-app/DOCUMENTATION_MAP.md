@@ -8,9 +8,15 @@
 
 ### ⭐ **Recommended Path** (15-20 minutes)
 ```
-1. Read: SECURE_LOCAL_DEPLOYMENT.md
+1. Read: SECURE_LOCAL_DEPLOYMENT.md (local script generation)
 2. Follow: Method 2 (Automated Script)
-3. Done! Instance running in AWS
+3. Read: AWS_LAUNCH_COMPLETE_GUIDE.md (Part 1-5: AWS console steps)
+4. Done! Instance running in AWS
+```
+
+**Or follow the complete end-to-end guide:**
+```
+→ AWS_LAUNCH_COMPLETE_GUIDE.md (everything in one place)
 ```
 
 **Why?** Fastest, most secure, least manual work
@@ -77,7 +83,11 @@
 ### Primary Guides (Start Here)
 ```
 README.md                          ← Project overview
-SECURE_LOCAL_DEPLOYMENT.md         ← How to deploy (RECOMMENDED)
+
+AWS_LAUNCH_COMPLETE_GUIDE.md       ⭐ COMPLETE END-TO-END GUIDE
+                                   (All steps: script generation → AWS console → launch)
+
+SECURE_LOCAL_DEPLOYMENT.md         ← How to generate script locally (RECOMMENDED)
 DEPLOYMENT_GUIDE.md                ← Step-by-step guide (alternative method)
 TEMPLATE_AND_GIT_GUIDE.md          ← Git safety & template files
 ```

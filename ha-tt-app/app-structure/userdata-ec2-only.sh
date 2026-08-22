@@ -103,6 +103,11 @@ const dbConfig = {
   port: parseInt(process.env.DB_PORT || '5432')
 };
 
+// Enable SSL for RDS
+if (process.env.DB_ENDPOINT && process.env.DB_ENDPOINT.includes('rds')) {
+  dbConfig.ssl = { rejectUnauthorized: false };
+}
+
 async function initializeDatabase() {
   try {
     if (dbType === 'postgres') {
@@ -296,6 +301,70 @@ systemctl reload nginx
 echo "✓ Nginx configuration complete"
 
 # ============================================
+# SECTION 3.5: Database Initialization
+# ============================================
+echo "=== Section 3.5: Database Initialization ==="
+
+# Create database-init.sh inline
+cat > /tmp/database-init.sh <<'DB_INIT_EOF'
+#!/bin/bash
+# Database initialization script
+set -e
+
+DB_TYPE="$1"
+DB_ENDPOINT="$2"
+DB_USER="$3"
+DB_PASSWORD="$4"
+DB_NAME="$5"
+DB_PORT="${6:-5432}"
+
+export PGPASSWORD="$DB_PASSWORD"
+
+if [ "$DB_TYPE" = "postgres" ]; then
+  echo "Installing PostgreSQL client..."
+  apt-get install -y postgresql-client > /dev/null 2>&1
+
+  echo "Testing connection to RDS..."
+  if ! psql -h "$DB_ENDPOINT" -U "$DB_USER" -p "$DB_PORT" -d "postgres" -c "SELECT 1;" > /dev/null 2>&1; then
+    echo "❌ Cannot connect to RDS - database may not be ready yet"
+    exit 1
+  fi
+  echo "✓ Connection successful"
+
+  DB_EXISTS=$(psql -h "$DB_ENDPOINT" -U "$DB_USER" -p "$DB_PORT" -d "postgres" -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME';" 2>/dev/null || echo "")
+
+  if [ -z "$DB_EXISTS" ]; then
+    echo "Creating database: $DB_NAME"
+    psql -h "$DB_ENDPOINT" -U "$DB_USER" -p "$DB_PORT" -d "postgres" -c "CREATE DATABASE \"$DB_NAME\";"
+    echo "✓ Database created"
+  else
+    echo "✓ Database already exists"
+  fi
+
+  echo "Creating table: hits"
+  psql -h "$DB_ENDPOINT" -U "$DB_USER" -d "$DB_NAME" -p "$DB_PORT" <<EOF
+CREATE TABLE IF NOT EXISTS hits (
+  id SERIAL PRIMARY KEY,
+  hit_count INT DEFAULT 0,
+  last_hit TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO hits (hit_count) VALUES (0) ON CONFLICT DO NOTHING;
+EOF
+  echo "✓ Table ready"
+fi
+DB_INIT_EOF
+
+chmod +x /tmp/database-init.sh
+
+# Run database initialization
+echo "Initializing database..."
+if /tmp/database-init.sh "$DB_TYPE" "$DB_ENDPOINT" "$DB_USER" "$DB_PASSWORD" "$DB_NAME" "$DB_PORT" 2>&1; then
+  echo "✓ Database initialization complete"
+else
+  echo "⚠ Database initialization failed (will retry when app starts)"
+fi
+
+# ============================================
 # SECTION 4: Service Setup
 # ============================================
 echo "=== Section 4: Service Setup ==="
@@ -348,7 +417,15 @@ fi
 
 echo ""
 echo "=== EC2 Setup Complete ==="
-echo "Application will be available at: http://<instance-ip>"
-echo "Health check: http://<instance-ip>/health"
-echo "Application logs: sudo journalctl -u app -f"
-echo "User data logs: /var/log/user-data.log"
+
+# Get instance IP from EC2 metadata (works automatically on EC2)
+INSTANCE_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || echo "YOUR_INSTANCE_IP")
+
+echo "Application will be available at: http://${INSTANCE_IP}"
+echo "Health check: http://${INSTANCE_IP}/health"
+echo ""
+echo "Next steps:"
+echo "1. Get your instance IP from AWS Console (EC2 → Instances)"
+echo "2. Access application: http://${INSTANCE_IP}"
+echo "3. Monitor logs: sudo journalctl -u app -f"
+echo "4. View user data logs: sudo tail -f /var/log/user-data.log"

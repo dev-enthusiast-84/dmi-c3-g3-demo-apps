@@ -14,22 +14,22 @@ This guide helps you:
 
 ---
 
-## 🎯 Recommended Method: Automated Script (Method 2)
+## 🎯 Recommended Method: Interactive Config Generator (Method 3)
 
-**Start here** if you want the easiest, most secure approach:
-- Simple config file
-- Automatic script generation
+**Start here** - Use the existing `config-generator.sh` tool (already in repo):
+- Interactive prompts
+- No manual editing needed
+- Safe, built-in tool
 - Ready to paste into AWS
-- No manual editing of scripts
 
-👉 **Jump to Method 2** below
+👉 **Jump to Method 3** below for interactive setup
 
 ---
 
 ## Alternative Methods
 
 **Method 1:** Simple Manual Edit - for those who prefer direct control  
-**Method 3:** Interactive Tool - for those who want prompts/wizard-style  
+**Method 2:** Template-Based Script - for those who want a file-based approach  
 
 ---
 
@@ -38,9 +38,20 @@ This guide helps you:
 - Your RDS endpoint, username, password (saved locally)
 - Your EC2 key pair name
 - Terminal/command line access
-- One of:
-  - ✅ The repository files (if you cloned the repo)
-  - ✅ The base script downloaded locally
+- The repository files (cloned locally)
+
+---
+
+## 📋 How It Works
+
+The scripts now:
+- ✅ Automatically fetch EC2 instance IP from metadata
+- ✅ Dynamically display actual IP in completion message
+- ✅ Support custom application directories
+- ✅ Use all user inputs (no hardcoded values)
+- ✅ Print configuration at startup
+
+**No manual IP replacement needed!** The EC2 user data script automatically displays your instance IP.
 
 ---
 
@@ -56,6 +67,77 @@ The repository includes **template files** that are safe to commit to git:
 **Key:** Templates are in git. Your edited versions (with credentials) stay local and .gitignored.
 
 See: `TEMPLATE_AND_GIT_GUIDE.md` for detailed git safety information.
+
+---
+
+## Method 3: Interactive Config Generator (3 minutes) ⭐ RECOMMENDED
+
+**Easiest approach** - Use the existing interactive tool already in the repository:
+
+### Step 1: Run the Generator
+
+```bash
+cd /path/to/ha-tt-app
+chmod +x app-structure/config-generator.sh
+./app-structure/config-generator.sh
+```
+
+### Step 2: Follow Interactive Prompts
+
+The tool will ask:
+```
+╔════════════════════════════════════════════════════════════════╗
+║        Configuration Generator - Hit Counter App              ║
+╚════════════════════════════════════════════════════════════════╝
+
+What would you like to generate?
+
+  1) .env file (for local development)
+  2) User data script (for EC2 deployment)
+  3) Complete configuration package
+  4) Environment variables only
+
+  Q) Quit
+
+Select option:
+```
+
+### Step 3: Choose Option 2 (User Data Script)
+
+```
+Select option: 2
+```
+
+### Step 4: Answer Configuration Questions
+
+```
+Database Type (postgres/mysql) [postgres]: postgres
+Database Endpoint (e.g., mydb.xxxxx.rds.amazonaws.com): mydb.cp6cq4cisdiw.us-east-1.rds.amazonaws.com
+Database User (e.g., postgres/admin): postgres
+Database Password: YourSecurePassword123!
+Database Name [ha-tt-db]: ha-tt-db
+Database Port [5432]: 5432
+Application Port [8000]: 8000
+Application Directory [/opt/app]: /opt/app
+```
+
+### Step 5: Generated Files
+
+The tool creates:
+```
+generated/
+├── userdata-custom.sh          ← Your deployment script (ready for AWS)
+├── .env                        ← Environment configuration
+└── env-vars.sh                 ← Environment variables export
+```
+
+### Step 6: Copy to Clipboard
+
+```bash
+cat generated/userdata-custom.sh | pbcopy
+```
+
+**✅ Done! Script is ready for AWS**
 
 ---
 

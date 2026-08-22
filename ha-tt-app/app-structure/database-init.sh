@@ -44,13 +44,41 @@ if [ "$DB_TYPE" = "postgres" ]; then
   # Set connection environment
   export PGPASSWORD="$DB_PASSWORD"
 
-  # Create database
-  echo "Creating database: $DB_NAME"
-  psql -h "$DB_ENDPOINT" -U "$DB_USER" -p "$DB_PORT" -c "CREATE DATABASE $DB_NAME;" 2>/dev/null || true
+  # Test connection first
+  echo "Testing connection to RDS..."
+  if ! psql -h "$DB_ENDPOINT" -U "$DB_USER" -p "$DB_PORT" -d "postgres" -c "SELECT 1;" > /dev/null 2>&1; then
+    echo "❌ Error: Cannot connect to RDS"
+    echo "   Endpoint: $DB_ENDPOINT"
+    echo "   User: $DB_USER"
+    echo "   Port: $DB_PORT"
+    echo ""
+    echo "Troubleshooting:"
+    echo "  1. Verify RDS endpoint is correct"
+    echo "  2. Verify password is correct"
+    echo "  3. Verify security group allows EC2 → RDS on port $DB_PORT"
+    echo "  4. Verify RDS is in Running state"
+    exit 1
+  fi
+  echo "✓ Connection successful"
+
+  # Check if database already exists
+  DB_EXISTS=$(psql -h "$DB_ENDPOINT" -U "$DB_USER" -p "$DB_PORT" -d "postgres" -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME';" 2>/dev/null || echo "")
+
+  if [ -z "$DB_EXISTS" ]; then
+    # Create database
+    echo "Creating database: $DB_NAME"
+    if ! psql -h "$DB_ENDPOINT" -U "$DB_USER" -p "$DB_PORT" -d "postgres" -c "CREATE DATABASE \"$DB_NAME\";" ; then
+      echo "❌ Error: Failed to create database"
+      exit 1
+    fi
+    echo "✓ Database created"
+  else
+    echo "✓ Database already exists: $DB_NAME"
+  fi
 
   # Create table
   echo "Creating table: hits"
-  psql -h "$DB_ENDPOINT" -U "$DB_USER" -d "$DB_NAME" -p "$DB_PORT" <<EOF
+  if ! psql -h "$DB_ENDPOINT" -U "$DB_USER" -d "$DB_NAME" -p "$DB_PORT" <<EOF
 CREATE TABLE IF NOT EXISTS hits (
   id SERIAL PRIMARY KEY,
   hit_count INT DEFAULT 0,
@@ -62,6 +90,10 @@ ON CONFLICT DO NOTHING;
 
 SELECT COUNT(*) as row_count FROM hits;
 EOF
+  then
+    echo "❌ Error: Failed to create table"
+    exit 1
+  fi
 
   echo "✓ PostgreSQL initialization complete"
 
@@ -75,15 +107,34 @@ elif [ "$DB_TYPE" = "mysql" ]; then
     apt-get install -y mysql-client
   fi
 
+  # Test connection first
+  echo "Testing connection to RDS..."
+  if ! mysql -h "$DB_ENDPOINT" -u "$DB_USER" -p"$DB_PASSWORD" -e "SELECT 1;" > /dev/null 2>&1; then
+    echo "❌ Error: Cannot connect to RDS"
+    echo "   Endpoint: $DB_ENDPOINT"
+    echo "   User: $DB_USER"
+    echo "   Port: 3306"
+    echo ""
+    echo "Troubleshooting:"
+    echo "  1. Verify RDS endpoint is correct"
+    echo "  2. Verify password is correct"
+    echo "  3. Verify security group allows EC2 → RDS on port 3306"
+    echo "  4. Verify RDS is in Running state"
+    exit 1
+  fi
+  echo "✓ Connection successful"
+
   # Create database
   echo "Creating database: $DB_NAME"
-  mysql -h "$DB_ENDPOINT" -u "$DB_USER" -p"$DB_PASSWORD" <<EOF 2>/dev/null || true
-CREATE DATABASE IF NOT EXISTS $DB_NAME;
-EOF
+  if ! mysql -h "$DB_ENDPOINT" -u "$DB_USER" -p"$DB_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;" ; then
+    echo "❌ Error: Failed to create database"
+    exit 1
+  fi
+  echo "✓ Database created"
 
   # Create table
   echo "Creating table: hits"
-  mysql -h "$DB_ENDPOINT" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" <<EOF
+  if ! mysql -h "$DB_ENDPOINT" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" <<EOF
 CREATE TABLE IF NOT EXISTS hits (
   id INT AUTO_INCREMENT PRIMARY KEY,
   hit_count INT DEFAULT 0,
@@ -94,6 +145,10 @@ INSERT IGNORE INTO hits (id, hit_count) VALUES (1, 0);
 
 SELECT COUNT(*) as row_count FROM hits;
 EOF
+  then
+    echo "❌ Error: Failed to create table"
+    exit 1
+  fi
 
   echo "✓ MySQL initialization complete"
 

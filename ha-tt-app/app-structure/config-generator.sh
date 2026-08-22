@@ -136,7 +136,7 @@ DB_PASSWORD="$DB_PASSWORD"
 DB_NAME="$DB_NAME"
 DB_PORT="$DB_PORT"
 APP_PORT=$APP_PORT
-APP_DIR="/opt/app"
+APP_DIR="$APP_DIR"
 SCRIPT_CONFIG
 
   cat >> "$output_file" <<'SCRIPT_END'
@@ -463,10 +463,18 @@ fi
 
 echo ""
 echo "=== EC2 Setup Complete ==="
-echo "Application will be available at: http://<instance-ip>"
-echo "Health check: http://<instance-ip>/health"
-echo "Application logs: sudo journalctl -u app -f"
-echo "User data logs: /var/log/user-data.log"
+
+# Get instance IP from EC2 metadata (works automatically on EC2)
+INSTANCE_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || echo "YOUR_INSTANCE_IP")
+
+echo "Application will be available at: http://${INSTANCE_IP}"
+echo "Health check: http://${INSTANCE_IP}/health"
+echo ""
+echo "Next steps:"
+echo "1. Get your instance IP from AWS Console (EC2 → Instances)"
+echo "2. Access application: http://\${INSTANCE_IP}"
+echo "3. Monitor logs: sudo journalctl -u app -f"
+echo "4. View user data logs: sudo tail -f /var/log/user-data.log"
 SCRIPT_END
 
   chmod +x "$output_file"

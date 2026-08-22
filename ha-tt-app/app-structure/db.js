@@ -15,18 +15,22 @@ async function initializePool() {
   try {
     if (config.database.type === 'postgres') {
       const { Pool } = require('pg');
-      pool = new Pool({
+      const poolConfig = {
         host: config.database.endpoint,
         user: config.database.user,
         password: config.database.password,
         database: config.database.name,
         port: config.database.port
-      });
+      };
+      if (config.database.endpoint && config.database.endpoint.includes('rds')) {
+        poolConfig.ssl = { rejectUnauthorized: false };
+      }
+      pool = new Pool(poolConfig);
 
       logger.info(`PostgreSQL pool created (${config.database.endpoint}:${config.database.port})`);
     } else if (config.database.type === 'mysql') {
       const mysql = require('mysql2/promise');
-      pool = mysql.createPool({
+      const mysqlConfig = {
         host: config.database.endpoint,
         user: config.database.user,
         password: config.database.password,
@@ -35,7 +39,11 @@ async function initializePool() {
         waitForConnections: true,
         connectionLimit: 10,
         queueLimit: 0
-      });
+      };
+      if (config.database.endpoint && config.database.endpoint.includes('rds')) {
+        mysqlConfig.ssl = 'amazon';
+      }
+      pool = mysql.createPool(mysqlConfig);
 
       logger.info(`MySQL pool created (${config.database.endpoint}:${config.database.port})`);
     }

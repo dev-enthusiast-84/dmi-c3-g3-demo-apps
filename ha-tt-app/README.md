@@ -2,7 +2,7 @@
 
 Complete, production-ready deployment solution for a Node.js web application with database integration. Supports **PostgreSQL** and **MySQL**.
 
-**Status:** ✅ Production Ready | **Version:** 2.0 | **Updated:** 2026-08-21
+**Status:** ✅ Production Ready | **Version:** 2.0 | **Updated:** 2026-08-21 | **Code & Docs Synced:** ✅
 
 ---
 
@@ -83,48 +83,48 @@ Complete these BEFORE launching the EC2 instance:
 
 ---
 
-## 🎯 Quick Start (5 Minutes)
+## 🎯 Quick Start (20 Minutes)
 
-### ⚡ Fastest Path - Automated Script
+### ⭐ **Fastest Path - Complete End-to-End Guide**
 
-**Recommended:** Use the automated script generator (keeps passwords local, never shared)
+**See:** `AWS_LAUNCH_COMPLETE_GUIDE.md` ← **Start here for complete walkthrough**
+
+This guide includes:
+- ✅ How to generate userdata script locally
+- ✅ How to paste into AWS Launch Template
+- ✅ Step-by-step AWS console instructions
+- ✅ How to launch and monitor instance
+- ✅ How to test the application
+- ✅ Troubleshooting guide
+
+### Quick Overview - Use Interactive Tool (Already in Repo):
 
 ```bash
-# Step 1: Create config file
-cat > ~/deploy-config.sh << 'EOF'
-#!/bin/bash
-DB_TYPE="postgres"                              # or "mysql"
-DB_ENDPOINT="your-rds-endpoint.rds.amazonaws.com"
-DB_USER="your-username"
-DB_PASSWORD="your-password"
-DB_PORT="5432"                                  # or 3306 for MySQL
+# Step 1: Run interactive config generator
+cd /path/to/ha-tt-app
+./app-structure/config-generator.sh
 
-# Auto-generate script (no changes below needed)
-cp /Users/maneettaantony/Workspaces/DMI-C3-G3/dmi-c3-g3-demo-apps/ha-tt-app/app-structure/userdata-ec2-only.sh /tmp/userdata-template.sh
-sed -i '' "s|DB_TYPE=\"postgres\"|DB_TYPE=\"$DB_TYPE\"|" /tmp/userdata-template.sh
-sed -i '' "s|DB_ENDPOINT=\"your-db-endpoint.rds.amazonaws.com\"|DB_ENDPOINT=\"$DB_ENDPOINT\"|" /tmp/userdata-template.sh
-sed -i '' "s|DB_USER=\"postgres\"|DB_USER=\"$DB_USER\"|" /tmp/userdata-template.sh
-sed -i '' "s|DB_PASSWORD=\"your-secure-password\"|DB_PASSWORD=\"$DB_PASSWORD\"|" /tmp/userdata-template.sh
-sed -i '' "s|DB_PORT=\"5432\"|DB_PORT=\"$DB_PORT\"|" /tmp/userdata-template.sh
-cp /tmp/userdata-template.sh ~/userdata-READY.sh
-echo "✅ Script ready: ~/userdata-READY.sh"
-EOF
-chmod +x ~/deploy-config.sh
+# Step 2: Follow prompts
+# - Choose: Option 2 (User data script)
+# - Enter: Your RDS endpoint, username, password, etc.
+# - Output: generated/userdata-custom.sh
+
+# Step 3: Copy to clipboard
+cat generated/userdata-custom.sh | pbcopy
+
+# Step 4: Paste into AWS (see AWS_LAUNCH_COMPLETE_GUIDE.md for details)
+# - EC2 → Launch Templates → Create
+# - Fill form (AMI, key pair, security group)
+# - User Data: Paste script
+# - Launch Instance
+
+# Step 5: Test
+curl http://<your-instance-ip>
+curl http://<your-instance-ip>/health
 ```
 
-# Step 2: Edit config with YOUR values
-nano ~/deploy-config.sh
-
-# Step 3: Generate script
-bash ~/deploy-config.sh
-
-# Step 4: Copy to clipboard
-cat ~/userdata-READY.sh | pbcopy
-
-# Step 5: Paste into AWS Launch Template → User Data → Launch
-```
-
-👉 **Full Guide:** See `SECURE_LOCAL_DEPLOYMENT.md` for step-by-step instructions
+👉 **For detailed step-by-step with screenshots:** `AWS_LAUNCH_COMPLETE_GUIDE.md`  
+👉 **For script generation only:** `SECURE_LOCAL_DEPLOYMENT.md`
 
 ---
 

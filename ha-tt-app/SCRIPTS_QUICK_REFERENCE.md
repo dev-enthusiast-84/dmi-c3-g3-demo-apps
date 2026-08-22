@@ -142,15 +142,23 @@ chmod +x config-generator.sh
 
 ## Recommended Deployment Method
 
-⭐ **RECOMMENDED: Automated Script (Not config-generator.sh, but the deploy-config.sh approach)**
+⭐ **RECOMMENDED: Use Existing config-generator.sh Tool**
 
-Use the **Automated Script Method** from `SECURE_LOCAL_DEPLOYMENT.md`:
-- Create config file locally with your values
-- Run script generator
-- Paste into AWS
-- Simple, secure, no passwords shared
+Already in repository at: `app-structure/config-generator.sh`
 
-See: `SECURE_LOCAL_DEPLOYMENT.md` → Method 2 (Automated Script)
+**Why:** Interactive, user-friendly, no manual editing
+
+```bash
+cd /path/to/ha-tt-app
+./app-structure/config-generator.sh
+
+# Follow interactive prompts
+# Select: Option 2 (User data script)
+# Answer questions
+# Done! Script generated and ready
+```
+
+See: `SECURE_LOCAL_DEPLOYMENT.md` → Method 3 (Interactive Config Generator)
 
 ---
 
