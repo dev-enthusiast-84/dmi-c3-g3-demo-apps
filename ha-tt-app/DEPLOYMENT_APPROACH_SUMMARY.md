@@ -111,149 +111,39 @@ GITHUB_APP_PATH="ha-tt-app/app-structure"
 
 ---
 
-## 📋 Deployment Checklist
+## 🚀 Ready to Deploy?
 
-### **Pre-Deployment**
-```
-[ ] Code pushed to GitHub (main branch)
-[ ] RDS instance running
-[ ] RDS endpoint noted
-[ ] RDS credentials saved
-[ ] EC2 security groups configured
-[ ] EC2 key pair downloaded
-```
+**For complete step-by-step deployment instructions, see:** 
+👉 **[GITHUB_DEPLOYMENT_GUIDE.md](GITHUB_DEPLOYMENT_GUIDE.md)**
 
-### **Deployment**
-```
-[ ] Generate script: ./app-structure/config-generator.sh
-[ ] Select Option 2
-[ ] Answer database questions
-[ ] Copy: cat generated/userdata-custom.sh | pbcopy
-[ ] Launch EC2 from template
-[ ] Paste userdata script
-[ ] Wait 5 minutes for setup
-[ ] Test application in browser
-```
+That document includes:
+- ✅ Pre-deployment checklist
+- ✅ 15 detailed deployment steps with expected outputs
+- ✅ AWS console field references
+- ✅ SSH commands with examples
+- ✅ Feature testing verification
+- ✅ Troubleshooting guide
 
-### **Post-Deployment**
-```
-[ ] App loads in browser
-[ ] Health check passes: /health
-[ ] Hit counter works
-[ ] Reset button works
-[ ] Check logs for errors
-```
-
----
-
-## 🚀 Step-by-Step Deployment Guide
-
-### **Step 1: Generate Script**
-```bash
-cd /Users/maneettaantony/Workspaces/DMI-C3-G3/dmi-c3-g3-demo-apps/ha-tt-app
-./app-structure/config-generator.sh
-```
-
-**Select:** `2) User data script (for EC2 deployment)`
-
-### **Step 2: Answer Configuration Questions**
-```
-Database Type: postgres
-Database Endpoint: ha-tt-db.cklo4cmkm5b6.us-east-1.rds.amazonaws.com
-Database User: postgres
-Database Password: (your password)
-Database Name: ha-tt-db
-Database Port: 5432
-Application Port: 8000
-Application Directory: /opt/app
-```
-
-### **Step 3: Copy Generated Script**
-```bash
-cat generated/userdata-custom.sh | pbcopy
-```
-
-### **Step 4: Create EC2 Instance**
-
-**In AWS Console:**
-1. EC2 → Launch Templates
-2. Create Launch Template
-3. Fill details:
-   - Name: `hit-counter-template`
-   - AMI: Ubuntu 22.04 LTS
-   - Instance Type: t3.micro
-   - Key Pair: (your key)
-   - Security Groups: (your groups)
-4. Advanced Details → User Data
-5. Paste script (Cmd+V)
-6. Create Template
-7. Launch instance from template
-
-### **Step 5: Monitor Setup**
-```bash
-# Get public IP from AWS Console, then:
-ssh -i your-keypair.pem ubuntu@<PUBLIC_IP>
-sudo tail -f /var/log/user-data.log
-```
-
-### **Step 6: Test Application**
-```bash
-# When setup complete:
-curl http://<PUBLIC_IP>
-curl http://<PUBLIC_IP>/health
-curl http://<PUBLIC_IP>/api/hits
-```
-
-Or open in browser: `http://<PUBLIC_IP>`
+**Quick summary of the flow:**
+1. Run: `./app-structure/config-generator.sh`
+2. Select: Option 2 (User data script)
+3. Answer: Your RDS details
+4. Copy: `cat generated/userdata-custom.sh | pbcopy`
+5. Paste: Into AWS Launch Template User Data
+6. Launch: EC2 instance and wait 5 minutes
+7. Test: Open browser to your public IP
 
 ---
 
 ## 🔄 Update Workflow
 
-### **After Code Changes**
+**After code changes:**
+1. Push to GitHub: `git push origin main`
+2. Generate new script: `./app-structure/config-generator.sh`
+3. Launch new EC2 instance
+4. Script auto-clones latest code from GitHub
 
-1. **Commit to GitHub**
-```bash
-git add .
-git commit -m "Add feature X"
-git push origin main
-```
-
-2. **Deploy New Instance**
-   - Generate script with config-generator.sh
-   - Launch new EC2 from template
-   - Script clones latest code from GitHub
-
-3. **Verify**
-```bash
-curl http://<NEW_IP>/health
-```
-
-No code changes needed in deployment scripts - just push to GitHub!
-
----
-
-## 🌿 Branch-Specific Deployments
-
-### **Production (main branch)**
-```bash
-GITHUB_BRANCH="main"
-# Deploy from main
-```
-
-### **Staging (develop branch)**
-```bash
-GITHUB_BRANCH="develop"
-# Deploy from develop
-```
-
-### **Feature Testing**
-```bash
-GITHUB_BRANCH="feature/my-feature"
-# Deploy from feature branch
-```
-
-Edit `generated/userdata-custom.sh` and change `GITHUB_BRANCH` before launching!
+**See GITHUB_DEPLOYMENT_GUIDE.md** for detailed workflow instructions and branch management examples.
 
 ---
 

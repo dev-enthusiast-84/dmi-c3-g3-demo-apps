@@ -91,7 +91,7 @@ Database Type (postgres/mysql) [postgres]:
 ↓ Press Enter (or type "postgres")
 
 Database Endpoint (e.g., mydb.xxxxx.rds.amazonaws.com): 
-↓ Type: ha-tt-db.cklo4cmkm5b6.us-east-1.rds.amazonaws.com
+↓ Type: (your-database-endpoint.xxxxx.us-east-1.rds.amazonaws.com)
 
 Database User (e.g., postgres/admin): 
 ↓ Press Enter (or type "postgres")
