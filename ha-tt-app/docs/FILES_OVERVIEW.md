@@ -21,7 +21,7 @@ Edit these lines before using:
 DB_ENDPOINT="your-postgres-endpoint.rds.amazonaws.com"
 DB_USER="postgres"
 DB_PASSWORD="your-secure-password"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="5432"
 ```
 
@@ -38,7 +38,7 @@ Edit these lines before using:
 DB_ENDPOINT="your-mysql-endpoint.rds.amazonaws.com"
 DB_USER="admin"
 DB_PASSWORD="your-secure-password"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="3306"
 ```
 
@@ -55,7 +55,7 @@ DB_TYPE="postgres"  # or "mysql"
 DB_ENDPOINT="your-db-endpoint.rds.amazonaws.com"
 DB_USER="postgres"  # or "admin" for MySQL
 DB_PASSWORD="your-secure-password"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="5432"      # or "3306" for MySQL
 ```
 
@@ -81,7 +81,7 @@ python3 legacy/scripts/launch-instance.py \
   --db-endpoint "mydb.xxxxx.us-east-1.rds.amazonaws.com" \
   --db-user "postgres" \
   --db-password "your-password" \
-  --db-name "hitcounter" \
+  --db-name "ha-tt-db" \
   --key-pair "my-key-pair"
 ```
 

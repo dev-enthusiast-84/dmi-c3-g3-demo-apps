@@ -6,28 +6,125 @@ Complete, production-ready deployment solution for a Node.js web application wit
 
 ---
 
+## 🔒 Git Safety: Templates & Secrets
+
+✅ **Templates in Git:** Repository includes `.template` files safe to commit  
+✅ **Credentials Local Only:** Your `.local` files stay on your machine  
+✅ **Automatic .gitignore:** Credentials never accidentally committed  
+
+See: `TEMPLATE_AND_GIT_GUIDE.md` for full git safety practices
+
+---
+
+## 🎯 What's New: EC2-Only Deployment
+
+**Refactored for clarity:** The deployment approach has been simplified to focus exclusively on EC2 instance setup.
+
+✨ **Key Improvements:**
+- ✅ **Separation of Concerns:** EC2 setup, database initialization, and configuration are now separate scripts
+- ✅ **Modular:** `userdata-ec2-only.sh` handles ONLY EC2 bootstrapping
+- ✅ **Optional Database Init:** `database-init.sh` for pre-setup (or let app auto-create)
+- ✅ **Configuration Tool:** `config-generator.sh` for interactive setup
+- ✅ **Cleaner Scope:** No database creation logic mixed into EC2 setup
+
+📖 **Read First:** `docs/EC2_ONLY_DEPLOYMENT.md` for the new approach
+
+---
+
+## ⚠️ Prerequisites (External Setup - Before EC2 Launch)
+
+**This user data script sets up an EC2 instance with a web server. It does NOT create infrastructure.**
+
+Complete these BEFORE launching the EC2 instance:
+
+### External Setup (Outside User Data Script)
+- ✅ **RDS Instance** (PostgreSQL or MySQL):
+  - Create and start in AWS RDS Console
+  - Get endpoint URL, master username, password
+  - Configure security group to allow EC2 access
+  
+- ✅ **AWS Infrastructure**:
+  - Create EC2 security group (allow port 80)
+  - Create EC2 key pair for SSH access
+  - Configure network access between EC2 and RDS
+
+- ✅ **Have Ready**:
+  - RDS Endpoint: `your-db.xxxxx.region.rds.amazonaws.com`
+  - RDS Master Username: `postgres` or `admin`
+  - RDS Master Password: (from RDS creation)
+  - Database Port: `5432` (PostgreSQL) or `3306` (MySQL)
+
+### What User Data Script Does (EC2 Setup Only)
+✅ **Sets Up on EC2 Instance:**
+- Installs Node.js 20.x runtime
+- Installs Nginx web server
+- Deploys application code
+- Configures environment variables (database connection)
+- Creates systemd service for auto-restart
+- Starts services on port 80
+
+❌ **Does NOT Do:**
+- Create RDS instance
+- Create VPC or networking
+- Create security groups
+- Create database server software
+- Assume RDS exists (configuration is passed in)
+
+### Quick Checklist
+```
+[ ] RDS instance created and running
+[ ] RDS endpoint: ___________________________
+[ ] RDS master username: ___________________________
+[ ] RDS master password: ___________________________
+[ ] EC2 key pair created: ___________________________
+[ ] EC2 security group created (port 80 open)
+[ ] Ready to launch EC2
+```
+
+---
+
 ## 🎯 Quick Start (5 Minutes)
 
-### Fastest Path to Deployment
+### ⚡ Fastest Path - Automated Script
 
-1. **Choose your database:**
-   - PostgreSQL → `docs/COPY_PASTE_READY.md` (PostgreSQL section)
-   - MySQL → `docs/COPY_PASTE_READY.md` (MySQL section)
+**Recommended:** Use the automated script generator (keeps passwords local, never shared)
 
-2. **Edit 5 configuration lines** with your database details:
-   ```bash
-   DB_ENDPOINT="your-rds-endpoint.region.rds.amazonaws.com"
-   DB_USER="postgres"  # or "admin" for MySQL
-   DB_PASSWORD="your-password"
-   DB_NAME="hitcounter"
-   DB_PORT="5432"  # or 3306 for MySQL
-   ```
+```bash
+# Step 1: Create config file
+cat > ~/deploy-config.sh << 'EOF'
+#!/bin/bash
+DB_TYPE="postgres"                              # or "mysql"
+DB_ENDPOINT="your-rds-endpoint.rds.amazonaws.com"
+DB_USER="your-username"
+DB_PASSWORD="your-password"
+DB_PORT="5432"                                  # or 3306 for MySQL
 
-3. **Copy & paste** into AWS Launch Template → User Data
+# Auto-generate script (no changes below needed)
+cp /Users/maneettaantony/Workspaces/DMI-C3-G3/dmi-c3-g3-demo-apps/ha-tt-app/app-structure/userdata-ec2-only.sh /tmp/userdata-template.sh
+sed -i '' "s|DB_TYPE=\"postgres\"|DB_TYPE=\"$DB_TYPE\"|" /tmp/userdata-template.sh
+sed -i '' "s|DB_ENDPOINT=\"your-db-endpoint.rds.amazonaws.com\"|DB_ENDPOINT=\"$DB_ENDPOINT\"|" /tmp/userdata-template.sh
+sed -i '' "s|DB_USER=\"postgres\"|DB_USER=\"$DB_USER\"|" /tmp/userdata-template.sh
+sed -i '' "s|DB_PASSWORD=\"your-secure-password\"|DB_PASSWORD=\"$DB_PASSWORD\"|" /tmp/userdata-template.sh
+sed -i '' "s|DB_PORT=\"5432\"|DB_PORT=\"$DB_PORT\"|" /tmp/userdata-template.sh
+cp /tmp/userdata-template.sh ~/userdata-READY.sh
+echo "✅ Script ready: ~/userdata-READY.sh"
+EOF
+chmod +x ~/deploy-config.sh
+```
 
-4. **Launch instance** and access in 5-10 minutes at `http://<public-ip>`
+# Step 2: Edit config with YOUR values
+nano ~/deploy-config.sh
 
-👉 **Next:** See `docs/COPY_PASTE_READY.md` for detailed copy-paste scripts
+# Step 3: Generate script
+bash ~/deploy-config.sh
+
+# Step 4: Copy to clipboard
+cat ~/userdata-READY.sh | pbcopy
+
+# Step 5: Paste into AWS Launch Template → User Data → Launch
+```
+
+👉 **Full Guide:** See `SECURE_LOCAL_DEPLOYMENT.md` for step-by-step instructions
 
 ---
 
@@ -35,7 +132,7 @@ Complete, production-ready deployment solution for a Node.js web application wit
 
 ```
 ha-tt-app/
-├── 📁 app-structure/              ⭐ NEW - Modular Application
+├── 📁 app-structure/              ⭐ NEW - Modular Application + Deployment Scripts
 │   ├── index.js                   (Entry point & orchestration)
 │   ├── config.js                  (Configuration management)
 │   ├── logger.js                  (Logging utility)
@@ -44,11 +141,14 @@ ha-tt-app/
 │   ├── server.js                  (Express configuration)
 │   ├── package.json               (Dependencies)
 │   ├── .env.example               (Configuration template)
-│   ├── userdata-modular.sh        (Optimized EC2 deployment script)
+│   ├── userdata-ec2-only.sh       (⭐ EC2 deployment - EC2 setup ONLY)
+│   ├── database-init.sh           (⭐ Optional database initialization)
+│   ├── config-generator.sh        (⭐ Configuration generation tool)
 │   └── README.md                  (Module documentation)
 │
 ├── 📁 docs/                        📚 Complete Documentation
-│   ├── COPY_PASTE_READY.md        (Ready-to-use deployment scripts) ⭐
+│   ├── EC2_ONLY_DEPLOYMENT.md     (⭐ NEW - EC2-only approach with separated scripts)
+│   ├── COPY_PASTE_READY.md        (Ready-to-use deployment scripts)
 │   ├── DEPLOY_TO_LAUNCH_TEMPLATE.md (How to use with AWS)
 │   ├── SETUP_GUIDE.md             (Quick start guide)
 │   ├── USAGE_GUIDE.md             (Comprehensive reference)
@@ -107,10 +207,11 @@ ha-tt-app/
 
 | Need | Read This |
 |------|-----------|
-| **Deploy in 5 min** | `docs/COPY_PASTE_READY.md` ⭐ |
-| **Understand deployment** | `docs/DEPLOY_TO_LAUNCH_TEMPLATE.md` |
-| **Quick start guide** | `docs/SETUP_GUIDE.md` |
-| **All details & options** | `docs/USAGE_GUIDE.md` |
+| **Deploy with automated script (RECOMMENDED)** | `SECURE_LOCAL_DEPLOYMENT.md` ⭐ START HERE |
+| **Step-by-step deployment guide** | `DEPLOYMENT_GUIDE.md` |
+| **EC2-only deployment architecture** | `docs/EC2_ONLY_DEPLOYMENT.md` |
+| **All script options** | `SCRIPTS_QUICK_REFERENCE.md` |
+| **Understand deployment flow** | `docs/DEPLOY_TO_LAUNCH_TEMPLATE.md` |
 | **Architecture & design** | `docs/ARCHITECTURE.md` |
 | **Project organization** | `docs/ORGANIZATION_GUIDE.md` |
 | **Module documentation** | `app-structure/README.md` |

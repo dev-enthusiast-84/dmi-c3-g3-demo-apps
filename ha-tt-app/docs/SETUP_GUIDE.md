@@ -1,5 +1,44 @@
 # Quick Setup Guide - Choose Your Database
 
+## ⚠️ Prerequisites (MUST READ FIRST)
+
+**Important:** This deployment script launches an EC2 instance with the application. It does NOT create an RDS database instance.
+
+### You MUST have these ready BEFORE starting:
+
+✅ **RDS Instance** (PostgreSQL or MySQL)
+- Instance must already exist and be RUNNING
+- Get the endpoint URL from AWS RDS Console
+- Have master username and password ready
+- Ensure security group allows EC2 access (port 5432 for PostgreSQL, 3306 for MySQL)
+
+✅ **RDS Connection Details**
+- RDS Endpoint: `your-db.xxxxx.region.rds.amazonaws.com`
+- Master Username: `postgres` (PostgreSQL) or `admin` (MySQL)
+- Master Password: (the password you set when creating RDS)
+- Database Port: `5432` (PostgreSQL) or `3306` (MySQL)
+
+✅ **AWS Setup**
+- EC2 key pair created or selected
+- Security group allowing port 80 (HTTP) for EC2
+- EC2 to RDS security group access configured
+
+### What This Script Creates
+- ✅ EC2 Instance (Ubuntu 22.04)
+- ✅ Node.js application on EC2
+- ✅ Nginx web server on EC2
+- ✅ New database `ha-tt-db` in your RDS
+- ✅ `hits` table in the new database
+
+### What This Script Does NOT Create
+- ❌ RDS instance (must pre-exist)
+- ❌ Database server
+- ❌ Master database user
+
+**If you don't have an RDS instance yet:** Create one first in AWS RDS Console, then come back here.
+
+---
+
 ## Step 1: Select the Correct Script
 
 ### For PostgreSQL
@@ -25,7 +64,7 @@ Open your chosen script file and edit the first 7 lines:
 DB_ENDPOINT="mydb-postgres.xxxxx.us-east-1.rds.amazonaws.com"
 DB_USER="postgres"
 DB_PASSWORD="your-secure-password-here"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="5432"
 APP_PORT=8000
 APP_DIR="/opt/app"
@@ -36,7 +75,7 @@ APP_DIR="/opt/app"
 DB_ENDPOINT="mydb-mysql.xxxxx.us-east-1.rds.amazonaws.com"
 DB_USER="admin"
 DB_PASSWORD="your-secure-password-here"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="3306"
 APP_PORT=8000
 APP_DIR="/opt/app"
@@ -88,7 +127,7 @@ python3 launch-instance.py \
   --db-endpoint "mydb.xxxxx.us-east-1.rds.amazonaws.com" \
   --db-user "postgres" \
   --db-password "your-password" \
-  --db-name "hitcounter" \
+  --db-name "ha-tt-db" \
   --key-pair "my-key-pair"
 ```
 
@@ -138,7 +177,7 @@ chmod +x test-application.sh
 Host: mydb-postgres.xxxxx.us-east-1.rds.amazonaws.com
 Port: 5432
 Username: postgres
-Database: hitcounter
+Database: ha-tt-db
 Table: hits (auto-created)
 ```
 
@@ -147,7 +186,7 @@ Table: hits (auto-created)
 Host: mydb-mysql.xxxxx.us-east-1.rds.amazonaws.com
 Port: 3306
 Username: admin
-Database: hitcounter
+Database: ha-tt-db
 Table: hits (auto-created)
 ```
 
@@ -228,14 +267,14 @@ Services:
 **PostgreSQL:**
 ```bash
 ssh -i keypair.pem ubuntu@<ip>
-psql -h <db-endpoint> -U postgres -d hitcounter
+psql -h <db-endpoint> -U postgres -d ha-tt-db
 SELECT * FROM hits;
 ```
 
 **MySQL:**
 ```bash
 ssh -i keypair.pem ubuntu@<ip>
-mysql -h <db-endpoint> -u admin -p -D hitcounter
+mysql -h <db-endpoint> -u admin -p -D ha-tt-db
 SELECT * FROM hits;
 ```
 
@@ -247,7 +286,7 @@ aws ec2 terminate-instances --instance-ids <instance-id>
 
 # Delete RDS database
 aws rds delete-db-instance \
-  --db-instance-identifier hitcounter \
+  --db-instance-identifier ha-tt-db \
   --skip-final-snapshot
 
 # Delete security groups

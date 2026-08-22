@@ -14,7 +14,7 @@ DB_TYPE="postgres"  # Set to "postgres" or "mysql"
 DB_ENDPOINT="your-db-endpoint.rds.amazonaws.com"
 DB_USER="postgres"  # Use "postgres" for PostgreSQL, "admin" for MySQL
 DB_PASSWORD="your-secure-password"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="5432"      # Use 5432 for PostgreSQL, 3306 for MySQL
 APP_PORT=8000
 APP_DIR="/opt/app"
@@ -102,7 +102,7 @@ const config = {
     endpoint: process.env.DB_ENDPOINT || 'localhost',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD,
-    name: process.env.DB_NAME || 'hitcounter',
+    name: process.env.DB_NAME || 'ha-tt-db',
     port: parseInt(process.env.DB_PORT || '5432')
   }
 };

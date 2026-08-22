@@ -16,15 +16,43 @@ The user data script automatically:
 
 ## Prerequisites
 
-1. **AWS Account** with EC2 and RDS permissions
-2. **MySQL Database** (RDS instance or on-premises)
-   - Database created and accessible from EC2 security group
-   - Username and password created
-3. **Ubuntu AMI** (Ubuntu 20.04 LTS, 22.04 LTS, or 24.04 LTS recommended)
-4. **Security Group** configured to allow:
+### ⚠️ IMPORTANT: RDS Instance Must Already Exist
+**This script does NOT create an RDS database server. You must create it first.**
+
+### Required Before Deployment:
+
+1. **RDS Database Instance** (PostgreSQL or MySQL) - MUST ALREADY EXIST
+   - Instance status: "Available" (check AWS RDS Console)
+   - Instance must be running and accessible
+   - Have the endpoint, master username, and password ready
+   - Example: `mydb.xxxxx.region.rds.amazonaws.com`
+
+2. **RDS Security Group Configuration**
+   - Allow inbound on database port (5432 for PostgreSQL, 3306 for MySQL)
+   - Source: EC2 security group (or 0.0.0.0/0)
+   - Outbound from EC2 must reach RDS on database port
+
+3. **AWS Account** with EC2 and RDS permissions
+
+4. **Ubuntu AMI** (Ubuntu 20.04 LTS, 22.04 LTS, or 24.04 LTS recommended)
+
+5. **Security Group** for EC2 configured to allow:
    - Inbound HTTP (port 80) from 0.0.0.0/0
    - Inbound HTTPS (port 443) from 0.0.0.0/0 (optional)
-   - Outbound to RDS database port (typically 3306)
+   - Outbound to RDS database port (5432 or 3306)
+
+6. **EC2 Key Pair** for SSH access to instances
+
+### What This Script Creates:
+- ✅ NEW EC2 instance (Ubuntu server)
+- ✅ Node.js application on EC2
+- ✅ NEW database named `ha-tt-db` (in your existing RDS)
+- ✅ NEW table named `hits` (in the `ha-tt-db` database)
+
+### What This Script Does NOT Create:
+- ❌ RDS instance (must pre-exist)
+- ❌ Database server or master user
+- ❌ VPC or network infrastructure
 
 ## Option 1: Launch via AWS Console
 
@@ -36,7 +64,7 @@ The user data script automatically:
    - **Endpoint** (e.g., `mydb.xxxxx.us-east-1.rds.amazonaws.com`)
    - **Master Username** (e.g., `admin`)
    - **Master Password**
-   - **Database Name** (e.g., `hitcounter`)
+   - **Database Name** (e.g., `ha-tt-db`)
 
 ### Step 2: Create EC2 Launch Template
 
@@ -60,7 +88,7 @@ The user data script automatically:
    DB_ENDPOINT="mydb.xxxxx.us-east-1.rds.amazonaws.com"
    DB_USER="admin"
    DB_PASSWORD="your-secure-password"
-   DB_NAME="hitcounter"
+   DB_NAME="ha-tt-db"
    DB_PORT="3306"
    
    # Paste the rest of userdata-for-console.sh script here
@@ -116,7 +144,7 @@ Parameters:
     
   DBName:
     Type: String
-    Default: hitcounter
+    Default: ha-tt-db
     Description: Database name
     
   KeyPairName:
@@ -204,7 +232,7 @@ REGION="us-east-1"
 DB_ENDPOINT="mydb.xxxxx.us-east-1.rds.amazonaws.com"
 DB_USER="admin"
 DB_PASSWORD="your-secure-password"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 KEY_PAIR_NAME="my-key-pair"
 SECURITY_GROUP_ID="sg-0123456789abcdef0"
 AMI_ID="ami-0c55b159cbfafe1f0"  # Ubuntu 22.04 LTS
@@ -252,7 +280,7 @@ sudo -u ubuntu node -e "
     host: 'your-db-endpoint',
     user: 'admin',
     password: 'password',
-    database: 'hitcounter'
+    database: 'ha-tt-db'
   }).then(conn => {
     console.log('✓ Database connected');
     conn.end();

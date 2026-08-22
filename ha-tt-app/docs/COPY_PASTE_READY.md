@@ -1,6 +1,47 @@
 # Copy & Paste Ready Scripts for AWS Launch Template
 
-Use these scripts directly. Just update the database configuration and paste into Launch Template → User Data field.
+⚠️ **READ FIRST:** These scripts deploy the application to EC2. They do NOT create an RDS instance. You must have an existing RDS instance running before using these scripts.
+
+## USER DATA SCRIPT SCOPE
+
+This is a **user data script for EC2 instances**. It runs ON the instance and sets it up as a web server.
+
+### Script Responsibilities (EC2 Setup Only):
+✅ Install Node.js 20.x runtime
+✅ Install Nginx reverse proxy
+✅ Deploy application code
+✅ Configure environment variables (database connection details)
+✅ Create systemd service for auto-restart
+✅ Start services on port 80
+
+### What Script Does NOT Do:
+❌ Create RDS instance
+❌ Create VPC or networking
+❌ Create security groups
+❌ Create databases (optional - app handles it)
+
+## ⚠️ PREREQUISITES (Setup Before EC2 Launch)
+
+Complete this external setup FIRST:
+
+**RDS Instance (PostgreSQL or MySQL)**
+- Create in AWS RDS Console
+- Get status: "Available"
+- Get endpoint: `your-db.xxxxx.region.rds.amazonaws.com`
+- Get master username: `postgres` (PostgreSQL) or `admin` (MySQL)
+- Get master password: (from RDS creation)
+- Get port: `5432` (PostgreSQL) or `3306` (MySQL)
+
+**AWS Infrastructure**
+- EC2 security group (allow port 80 inbound)
+- RDS security group (allow EC2 access on DB port)
+- EC2 key pair created
+- Network configured between EC2 and RDS
+
+### Ready to Launch EC2?
+Once you have RDS running and credentials ready, use this script to launch the EC2 instance and set up the web server.
+
+---
 
 ## 🎯 Which Script to Use?
 
@@ -30,7 +71,7 @@ Find these lines in the script and update them:
 DB_ENDPOINT="your-postgres-endpoint.region.rds.amazonaws.com"
 DB_USER="postgres"
 DB_PASSWORD="your-secure-password-here"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="5432"
 ```
 
@@ -57,7 +98,7 @@ DB_TYPE="postgres"
 DB_ENDPOINT="your-postgres-endpoint.region.rds.amazonaws.com"
 DB_USER="postgres"
 DB_PASSWORD="your-secure-password-here"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="5432"
 APP_PORT=8000
 APP_DIR="/opt/app"
@@ -105,7 +146,7 @@ const config = {
     endpoint: process.env.DB_ENDPOINT || 'localhost',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD,
-    name: process.env.DB_NAME || 'hitcounter',
+    name: process.env.DB_NAME || 'ha-tt-db',
     port: parseInt(process.env.DB_PORT || '5432')
   }
 };
@@ -399,7 +440,7 @@ Find these lines in the script and update them:
 DB_ENDPOINT="your-mysql-endpoint.region.rds.amazonaws.com"
 DB_USER="admin"
 DB_PASSWORD="your-secure-password-here"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="3306"
 ```
 
@@ -422,7 +463,7 @@ DB_TYPE="mysql"
 DB_ENDPOINT="your-mysql-endpoint.region.rds.amazonaws.com"
 DB_USER="admin"
 DB_PASSWORD="your-secure-password-here"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="3306"
 APP_PORT=8000
 APP_DIR="/opt/app"
@@ -470,7 +511,7 @@ const config = {
     endpoint: process.env.DB_ENDPOINT || 'localhost',
     user: process.env.DB_USER || 'admin',
     password: process.env.DB_PASSWORD,
-    name: process.env.DB_NAME || 'hitcounter',
+    name: process.env.DB_NAME || 'ha-tt-db',
     port: parseInt(process.env.DB_PORT || '3306')
   }
 };
@@ -759,7 +800,7 @@ Before you paste:
 - [ ] You've edited DB_ENDPOINT (line 5)
 - [ ] You've edited DB_USER (line 6)
 - [ ] You've edited DB_PASSWORD (line 7)
-- [ ] You've edited DB_NAME (line 8) - if not using "hitcounter"
+- [ ] You've edited DB_NAME (line 8) - if not using "ha-tt-db"
 - [ ] You've edited DB_PORT (line 9) - if different from default
 
 After you paste:

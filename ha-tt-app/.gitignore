@@ -40,7 +40,24 @@ temp/
 *.key
 aws-credentials.json
 
-# Deployment
+# Deployment Configuration (SENSITIVE - Never commit)
+deploy-config.sh                # Local deployment config with credentials
+database-init.local.sh          # Local database init with credentials
+userdata-READY.sh              # Generated script with embedded credentials
+*.template.local               # Local template overrides
+*.local                        # Any .local files (your credentials)
+
+# Generated scripts (with credentials embedded)
+/generated/
+!/generated/.gitkeep
+
+# AWS/Terraform
 .terraform/
 *.tfstate
 *.tfstate.*
+terraform.tfvars
+.terraform.lock.hcl
+
+# Local scripts with secrets
+/local-scripts/
+deploy.local.sh

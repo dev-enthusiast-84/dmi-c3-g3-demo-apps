@@ -1,6 +1,52 @@
-# AWS EC2 Hit Counter Application
+# AWS EC2 Hit Counter Application - Legacy Scripts
 
-A complete EC2 deployment solution with Node.js/Express web server and database integration. Supports both **MySQL** and **PostgreSQL**.
+**⚠️ Note:** This directory contains the original monolithic deployment scripts. For the **new refactored approach** with separated EC2-only and database initialization scripts, see:
+
+📖 **New Approach:** `../docs/EC2_ONLY_DEPLOYMENT.md` (Recommended)  
+📖 **New Scripts:** `../app-structure/` (userdata-ec2-only.sh, database-init.sh, config-generator.sh)
+
+---
+
+This directory contains a complete EC2 deployment solution with Node.js/Express web server and database integration. Supports both **MySQL** and **PostgreSQL**.
+
+## ⚠️ CRITICAL PREREQUISITE
+
+**This deployment script launches the APPLICATION on EC2. It does NOT create an RDS database server.**
+
+### You MUST have these BEFORE using this script:
+
+✅ **Existing RDS Instance (PostgreSQL or MySQL)**
+- Instance must be RUNNING (not stopped or deleting)
+- Status shows "Available" in AWS RDS Console
+- Endpoint URL: e.g., `mydb.xxxxx.region.rds.amazonaws.com`
+- Master username and password (from RDS creation)
+- Port: 5432 (PostgreSQL) or 3306 (MySQL)
+
+✅ **RDS Security Configuration**
+- RDS security group allows inbound on database port
+- Source: EC2 security group or 0.0.0.0/0
+- EC2 will connect to this RDS instance
+
+✅ **AWS Setup**
+- EC2 key pair for SSH access
+- Security group for EC2 allowing port 80
+- Both RDS and EC2 in same VPC (or configured for access)
+
+### What Gets Created by This Script:
+- ✅ NEW EC2 instance (Ubuntu 22.04)
+- ✅ Node.js + Nginx on EC2
+- ✅ Hit counter application on EC2
+- ✅ NEW database `ha-tt-db` (added to your existing RDS)
+- ✅ NEW table `hits` (in the new database)
+
+### What Does NOT Get Created:
+- ❌ RDS instance
+- ❌ Database server software
+- ❌ Database master credentials
+
+**⚠️ If you don't have RDS yet:** Create it first in AWS Console, wait for "Available" status, then return here.
+
+---
 
 ## 📋 What's Included
 
@@ -40,7 +86,7 @@ A complete EC2 deployment solution with Node.js/Express web server and database 
 DB_ENDPOINT="your-postgres-endpoint.rds.amazonaws.com"
 DB_USER="postgres"
 DB_PASSWORD="your-secure-password"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="5432"
 ```
 
@@ -49,7 +95,7 @@ DB_PORT="5432"
 DB_ENDPOINT="your-mysql-endpoint.rds.amazonaws.com"
 DB_USER="admin"
 DB_PASSWORD="your-secure-password"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="3306"
 ```
 
@@ -59,7 +105,7 @@ DB_TYPE="postgres"  # or "mysql"
 DB_ENDPOINT="your-db-endpoint.rds.amazonaws.com"
 DB_USER="postgres"  # or "admin" for MySQL
 DB_PASSWORD="your-secure-password"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="5432"      # or "3306" for MySQL
 ```
 
@@ -89,8 +135,8 @@ chmod +x test-application.sh
 ### PostgreSQL Setup
 ```sql
 -- Connect to your PostgreSQL database server
-CREATE DATABASE hitcounter;
-\c hitcounter
+CREATE DATABASE ha-tt-db;
+\c ha-tt-db
 CREATE TABLE hits (
     id SERIAL PRIMARY KEY,
     hit_count INT DEFAULT 0,
@@ -104,8 +150,8 @@ INSERT INTO hits (hit_count) VALUES (0);
 ### MySQL Setup
 ```sql
 -- Connect to your MySQL database server
-CREATE DATABASE hitcounter;
-USE hitcounter;
+CREATE DATABASE ha-tt-db;
+USE ha-tt-db;
 CREATE TABLE hits (
     id INT AUTO_INCREMENT PRIMARY KEY,
     hit_count INT DEFAULT 0,
@@ -156,7 +202,7 @@ python3 launch-instance.py \
   --db-endpoint mydb.xxxxx.us-east-1.rds.amazonaws.com \
   --db-user postgres \
   --db-password 'secure-password' \
-  --db-name hitcounter \
+  --db-name ha-tt-db \
   --key-pair my-key-pair
 ```
 
@@ -261,7 +307,7 @@ To avoid charges:
 aws ec2 terminate-instances --instance-ids <instance-id>
 
 # Delete RDS database
-aws rds delete-db-instance --db-instance-identifier hitcounter --skip-final-snapshot
+aws rds delete-db-instance --db-instance-identifier ha-tt-db --skip-final-snapshot
 
 # Delete security groups (optional)
 aws ec2 delete-security-group --group-id <sg-id>

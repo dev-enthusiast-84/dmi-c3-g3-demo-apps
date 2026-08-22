@@ -261,8 +261,8 @@ def main():
 
     parser.add_argument(
         '--db-name',
-        default='hitcounter',
-        help='Database name (default: hitcounter)'
+        default='ha-tt-db',
+        help='Database name (default: ha-tt-db)'
     )
 
     parser.add_argument(

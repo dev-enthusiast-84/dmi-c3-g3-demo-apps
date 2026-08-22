@@ -3,7 +3,7 @@
 DB_ENDPOINT="your-db-endpoint.rds.amazonaws.com"
 DB_USER="postgres"
 DB_PASSWORD="your-secure-password"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="5432"
 APP_PORT=8000
 APP_DIR="/opt/app"
@@ -61,7 +61,7 @@ const dbConfig = {
   host: process.env.DB_ENDPOINT || 'localhost',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'changeme',
-  database: process.env.DB_NAME || 'hitcounter',
+  database: process.env.DB_NAME || 'ha-tt-db',
   port: process.env.DB_PORT || 5432
 };
 

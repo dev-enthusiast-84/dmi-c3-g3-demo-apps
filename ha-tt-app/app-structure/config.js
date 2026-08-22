@@ -17,7 +17,7 @@ const config = {
     endpoint: process.env.DB_ENDPOINT || 'localhost',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD,
-    name: process.env.DB_NAME || 'hitcounter',
+    name: process.env.DB_NAME || 'ha-tt-db',
     port: parseInt(process.env.DB_PORT || '5432')
   },
 

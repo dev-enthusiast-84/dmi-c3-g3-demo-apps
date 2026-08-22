@@ -2,6 +2,49 @@
 
 Guide for adding the organized, modular application to EC2 Launch Template User Data field.
 
+## ⚠️ PREREQUISITES - MUST HAVE BEFORE STARTING
+
+**This deployment script launches EC2 instances. It does NOT create an RDS database server.**
+
+### Required Before You Begin:
+
+✅ **Existing RDS Instance (PostgreSQL or MySQL)**
+- Instance must be running (check AWS RDS Console → "Available" status)
+- Note the endpoint URL: `your-db.xxxxx.region.rds.amazonaws.com`
+- Have master username: `postgres` (PostgreSQL) or `admin` (MySQL)
+- Have master password: (the one you set during RDS creation)
+- Database port: `5432` (PostgreSQL) or `3306` (MySQL)
+
+✅ **Security Group Permissions**
+- RDS security group: Allow inbound on DB port (5432/3306)
+  - Source: EC2 security group (or 0.0.0.0/0)
+- EC2 security group: Allow inbound on port 80 (HTTP)
+  - Source: 0.0.0.0/0 (or your IP)
+
+✅ **AWS Configuration**
+- EC2 key pair exists (for SSH access to instances)
+- VPC where RDS is running
+- Permissions to create EC2 instances
+
+### What Gets Created:
+- ✅ NEW EC2 instance (Ubuntu 22.04)
+- ✅ Application and web server on EC2
+- ✅ NEW database in your existing RDS
+- ✅ NEW table for application data
+
+### What Does NOT Get Created:
+- ❌ RDS instance (must pre-exist)
+- ❌ Database server
+- ❌ Master user credentials
+
+### No RDS Yet?
+1. Create RDS instance in AWS Console first
+2. Wait for status to show "Available"
+3. Get endpoint and credentials
+4. Return here to deploy the application
+
+---
+
 ## 📋 Three Deployment Options
 
 ### Option 1: Direct Paste (Recommended for Quick Setup)
@@ -48,7 +91,7 @@ Guide for adding the organized, modular application to EC2 Launch Template User 
    DB_ENDPOINT="your-rds-endpoint.region.rds.amazonaws.com"
    DB_USER="postgres"  # or "admin" for MySQL
    DB_PASSWORD="your-secure-password"
-   DB_NAME="hitcounter"
+   DB_NAME="ha-tt-db"
    DB_PORT="5432"      # or 3306 for MySQL
    ```
 
@@ -109,7 +152,7 @@ Guide for adding the organized, modular application to EC2 Launch Template User 
    DB_ENDPOINT=your-rds-endpoint.region.rds.amazonaws.com
    DB_USER=postgres
    DB_PASSWORD=your-password
-   DB_NAME=hitcounter
+   DB_NAME=ha-tt-db
    DB_PORT=5432
    APP_PORT=8000
    NODE_ENV=production
@@ -249,7 +292,7 @@ DB_TYPE="postgres"  # or "mysql"
 DB_ENDPOINT="mydb.xxxxx.us-east-1.rds.amazonaws.com"
 DB_USER="postgres"  # or "admin" for MySQL
 DB_PASSWORD="your-secure-password"
-DB_NAME="hitcounter"
+DB_NAME="ha-tt-db"
 DB_PORT="5432"  # or 3306 for MySQL
 ```
 
@@ -476,11 +519,11 @@ If something doesn't work:
 3. **Test Database**
    ```bash
    # PostgreSQL
-   psql -h <endpoint> -U postgres -d hitcounter
+   psql -h <endpoint> -U postgres -d ha-tt-db
    SELECT * FROM hits;
    
    # MySQL
-   mysql -h <endpoint> -u admin -p hitcounter
+   mysql -h <endpoint> -u admin -p ha-tt-db
    SELECT * FROM hits;
    ```
 

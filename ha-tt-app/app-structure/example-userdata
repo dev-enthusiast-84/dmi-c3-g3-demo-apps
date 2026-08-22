@@ -1,0 +1,83 @@
+#!/bin/bash
+set -e
+
+# Update the package list
+apt-get update -y
+
+# Install Apache, PHP and the required PHP extensions
+apt-get install -y apache2 php php-mysql php-curl php-gd php-xml php-mbstring libapache2-mod-php wget unzip
+
+# Download the latest version of WordPress
+cd /tmp
+wget -q https://wordpress.org/latest.zip
+unzip -q latest.zip
+
+# Remove Apache's default webpage
+rm -rf /var/www/html/*
+
+# Copy WordPress into the web server directory
+cp -r wordpress/* /var/www/html/
+
+# Set the correct ownership and permissions
+chown -R www-data:www-data /var/www/html
+chmod -R 755 /var/www/html
+
+# Create the WordPress configuration file
+cd /var/www/html
+cp wp-config-sample.php wp-config.php
+
+# Configure the database connection
+sed -i "s/database_name_here/appdb/" wp-config.php
+sed -i "s/username_here/admin/" wp-config.php
+sed -i "s/password_here/ChangeThisPassword123!/" wp-config.php
+sed -i "s/localhost/ha-project-db.cp6cq4cisdiw.us-east-1.rds.amazonaws.com/" wp-config.php
+
+# ----------------------------------------------------------------------------
+# Static WordPress security keys (salts)
+# ----------------------------------------------------------------------------
+# These MUST be identical across every instance behind the load balancer.
+# If each instance generated its own random salts, a login cookie signed by
+# one instance would fail validation on another, causing users to be
+# silently bounced back to the login page depending on which instance the
+# load balancer routes them to.
+#
+# Remove the placeholder salt lines that ship in wp-config-sample.php.
+sed -i "/AUTH_KEY/d;/SECURE_AUTH_KEY/d;/LOGGED_IN_KEY/d;/NONCE_KEY/d;/AUTH_SALT/d;/SECURE_AUTH_SALT/d;/LOGGED_IN_SALT/d;/NONCE_SALT/d" wp-config.php
+
+# IMPORTANT ORDERING NOTE:
+# WordPress reads its salt constants when it boots via the line:
+#   require_once ABSPATH . 'wp-settings.php';
+# If the salts are defined AFTER that line runs, WordPress has already
+# started and will silently fall back to its own temporary, non-persistent
+# salts instead of ours - defeating the entire fix, with no visible error.
+# The salts MUST be defined BEFORE that require line.
+#
+# To guarantee correct order without fragile line-by-line text insertion,
+# we do this in three simple, safe steps:
+#   1. Remove the require_once line from the file (save its text first).
+#   2. Append our static salts to the (now require-line-free) file.
+#   3. Append the require_once line back on, so it becomes the last line.
+# This way the salts are always written before WordPress boots, no matter
+# what line number they land on, and there is no risky text-matching or
+# character-escaping involved.
+
+# Step 1: remove the require_once line
+sed -i "/require_once ABSPATH . 'wp-settings.php';/d" wp-config.php
+
+# Step 2: append the static salts (now safely at the true end of the file)
+cat >> wp-config.php << 'SALTEOF'
+define('AUTH_KEY',         '8^vC<PO Q#@~/KzdMy*#o&H;tn3~,Vf)b4sHU2g2<zQ)2N:LBg`/@R.x@Q(pTr,B');
+define('SECURE_AUTH_KEY',  'n19XzhQuuo;!55=w3+BIe|uT.V2>B)^:elVy]}``L>GcW/wpyP3+}}W#1b|+^<iB');
+define('LOGGED_IN_KEY',    '5eQWOmn7P+M=jt.?s{uU8H2XJOB>vw)0GqEP.s<wKbx-B8[;Jw,PKz4sotT1<^)e');
+define('NONCE_KEY',        '1q.]yeOE-oe=bL6|D@`j!:DFQJRgNXd_fWpUGJMZ&3*;i8db@2{Q7=--[:$vW/!@');
+define('AUTH_SALT',        '|}|T|VKTYmb|8$}=HF~$so*DEONU,PKJQdIkp&QXe-<n-21{=gPVN-I;/6O<0U/!');
+define('SECURE_AUTH_SALT', '=,[5*b|l5E>jf- p2B-c~#od/I*h(,@.IR+d()49U}H|(9qJr_v|?x9<Uke-aK-4');
+define('LOGGED_IN_SALT',   ']4YU>!(pT;](|kCp|tJNDU3rfE:+w[xiujXpC]w5g?[4(M6dZs7;+cQ&w+Mg~.0C');
+define('NONCE_SALT',       '|qd-_~>{.7DfimOC?s-}o+39}V6Ul~vY}Ip&PfwdoZ}|q94u3G2;D8<8Y.ux-|#B');
+SALTEOF
+# Step 3: append require_once back on as the final line of the file
+echo "require_once ABSPATH . 'wp-settings.php';" >> wp-config.php
+
+# Start Apache and enable it after every reboot
+systemctl restart apache2
+systemctl enable apache2
