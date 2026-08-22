@@ -1,0 +1,35 @@
+{
+  "name": "hit-counter-app",
+  "version": "2.0.0",
+  "description": "Simple hit counter application with database integration - Supports PostgreSQL and MySQL",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "NODE_ENV=development node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "express",
+    "postgres",
+    "mysql",
+    "hit-counter",
+    "ec2",
+    "aws"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1"
+  },
+  "optionalDependencies": {
+    "pg": "^8.11.3",
+    "mysql2": "^3.6.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
