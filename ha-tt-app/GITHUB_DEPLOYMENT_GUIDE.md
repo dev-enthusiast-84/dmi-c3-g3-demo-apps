@@ -393,15 +393,55 @@ ha-tt-app/app-structure/
 
 ### **GitHub Clone Failed**
 
+Script automatically retries 3 times (waits 5-10 seconds between attempts) for transient failures.
+
 Check logs:
 ```bash
 sudo tail -100 /var/log/user-data.log | grep -i "git\|clone\|github"
 ```
 
-**Solutions:**
-- Verify repo is public OR token/SSH key configured
-- Check branch name exists
-- Verify path `ha-tt-app/app-structure` is correct
+**If still failing after retries:**
+
+1. **Verify repository exists:**
+```bash
+# Check if repo is accessible
+curl -I https://github.com/dev-enthusiast-84/dmi-c3-g3-demo-apps
+```
+
+2. **Verify branch exists:**
+```bash
+# From EC2 instance (SSH):
+git ls-remote https://github.com/dev-enthusiast-84/dmi-c3-g3-demo-apps main
+```
+
+3. **Check internet connectivity:**
+```bash
+# From EC2 instance (SSH):
+ping github.com
+```
+
+4. **Manual fix (if stuck):**
+```bash
+# SSH into instance
+ssh -i your-keypair.pem ubuntu@<PUBLIC_IP>
+
+# Clone manually
+cd /opt/app
+git clone --branch main --depth 1 https://github.com/dev-enthusiast-84/dmi-c3-g3-demo-apps.git temp-repo
+cp -r temp-repo/ha-tt-app/app-structure/* .
+rm -rf temp-repo
+npm install --production
+
+# Restart app
+sudo systemctl restart app
+```
+
+**Common causes:**
+- ❌ Repository URL typo
+- ❌ Branch name wrong (verify `main` exists)
+- ❌ Private repo without auth token
+- ❌ EC2 internet blocked (security group issue)
+- ❌ GitHub API rate limiting
 
 ### **App Won't Start**
 

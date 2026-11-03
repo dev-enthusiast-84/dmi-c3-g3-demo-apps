@@ -28,13 +28,36 @@ echo "✓ System setup complete"
 echo "=== Section 2: Application Deployment ==="
 mkdir -p $APP_DIR && cd $APP_DIR
 echo "Cloning from GitHub: $GITHUB_REPO (branch: $GITHUB_BRANCH)"
-git clone --branch "$GITHUB_BRANCH" --depth 1 "$GITHUB_REPO" temp-repo || { echo "✗ Clone failed"; exit 1; }
-if [ -d "temp-repo/$GITHUB_APP_PATH" ]; then
-  cp -r temp-repo/$GITHUB_APP_PATH/* . && rm -rf temp-repo
-  echo "✓ Application cloned from GitHub"
-else
-  echo "✗ Error: $GITHUB_APP_PATH not found in repository"
-  rm -rf temp-repo && exit 1
+
+RETRY_COUNT=0
+MAX_RETRIES=3
+CLONE_SUCCESS=false
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+  echo "Clone attempt $RETRY_COUNT/$MAX_RETRIES..."
+
+  if git clone --branch "$GITHUB_BRANCH" --depth 1 "$GITHUB_REPO" temp-repo 2>&1; then
+    if [ -d "temp-repo/$GITHUB_APP_PATH" ]; then
+      cp -r temp-repo/$GITHUB_APP_PATH/* . && rm -rf temp-repo
+      echo "✓ Application cloned from GitHub (attempt $RETRY_COUNT)"
+      CLONE_SUCCESS=true
+      break
+    else
+      echo "✗ Path not found: $GITHUB_APP_PATH in repository"
+      rm -rf temp-repo && exit 1
+    fi
+  else
+    echo "Clone attempt $RETRY_COUNT failed. Waiting before retry..."
+    rm -rf temp-repo 2>/dev/null || true
+    [ $RETRY_COUNT -lt $MAX_RETRIES ] && sleep $((RETRY_COUNT * 5))
+  fi
+done
+
+if [ "$CLONE_SUCCESS" = false ]; then
+  echo "✗ GitHub clone failed after $MAX_RETRIES attempts"
+  echo "Check: 1) GitHub repo URL/branch 2) Internet connectivity 3) Logs: tail /var/log/user-data.log"
+  exit 1
 fi
 
 echo "Installing npm dependencies..."
