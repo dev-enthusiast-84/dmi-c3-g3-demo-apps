@@ -1,5 +1,21 @@
+# Terraform working directories and state
 .terraform/
 *.tfstate
 *.tfstate.*
+.terraform.tfstate.lock.info
+crash.log
+*.tfplan
+
+# Variable files may contain secrets; keep only examples tracked
 terraform.tfvars
+*.tfvars
+*.tfvars.json
+
+# Overrides are local-only
+override.tf
+*_override.tf
+
+# Keys and certificates
 *.pem
+*.key
+id_rsa*
