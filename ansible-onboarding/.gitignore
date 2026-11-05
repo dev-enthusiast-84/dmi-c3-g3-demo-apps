@@ -1,0 +1,22 @@
+# Python virtual environment
+.venv/
+ 
+# Python cache files
+__pycache__/
+*.pyc
+ 
+# Ansible local files
+.ansible/
+*.retry
+ 
+# Tool cache files
+.cache/
+ 
+# Operating-system files
+.DS_Store
+ 
+# Private keys
+id_rsa
+id_ed25519
+*.pem
+*.key
