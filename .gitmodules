@@ -40,3 +40,6 @@
 [submodule "CodeTrack"]
 	path = CodeTrack
 	url = https://github.com/dev-enthusiast-84/CodeTrack.git
+[submodule "docker-network-demo-apps"]
+	path = docker-network-demo-apps
+	url = https://github.com/dev-enthusiast-84/docker-network-demo-apps.git
