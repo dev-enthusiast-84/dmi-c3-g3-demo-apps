@@ -1,0 +1,18 @@
+[submodule "terraform-aws-epicbook"]
+	path = terraform-aws-epicbook
+	url = https://github.com/dev-enthusiast-84/terraform-aws-epicbook.git
+[submodule "terraform-aws-vm"]
+	path = terraform-aws-vm
+	url = https://github.com/dev-enthusiast-84/terraform-aws-vm.git
+[submodule "terraform-azure-vm"]
+	path = terraform-azure-vm
+	url = https://github.com/dev-enthusiast-84/terraform-azure-vm.git
+[submodule "terraform-react-azure"]
+	path = terraform-react-azure
+	url = https://github.com/dev-enthusiast-84/terraform-react-azure.git
+[submodule "ha-tt-app"]
+	path = ha-tt-app
+	url = https://github.com/dev-enthusiast-84/ha-tt-app.git
+[submodule "ansible-onboarding"]
+	path = ansible-onboarding
+	url = https://github.com/dev-enthusiast-84/ansible-onboarding.git
