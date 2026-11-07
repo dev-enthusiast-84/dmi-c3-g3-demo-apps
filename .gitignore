@@ -1,0 +1,57 @@
+# Root-level ignores for the parent repo
+# ---- Sensitive data guard (added: never commit secrets, state or credentials) ----
+# Environment and secret files
+.env
+.env.*
+!.env.example
+*.env
+*.secret
+*.secrets
+secrets/
+credentials
+credentials.*
+.netrc
+.npmrc
+.pypirc
+.aws/
+.azure/
+.kube/
+kubeconfig
+# Keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.ppk
+*.ovpn
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+# Ansible secrets
+.vault_pass*
+vault-password*
+*vault*.yml
+!*vault*.example.yml
+# Terraform state, variables and plans
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+!*.tfvars.example.json
+*.auto.tfvars
+*.auto.tfvars.json
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+.terraformrc
+terraform.rc
+# Local machine files
+*.log
+.DS_Store
+Thumbs.db
+
