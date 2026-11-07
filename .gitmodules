@@ -1,3 +1,45 @@
+[submodule "terraform-aws-epicbook"]
+	path = terraform-aws-epicbook
+	url = https://github.com/dev-enthusiast-84/terraform-aws-epicbook.git
+[submodule "terraform-aws-vm"]
+	path = terraform-aws-vm
+	url = https://github.com/dev-enthusiast-84/terraform-aws-vm.git
+[submodule "terraform-azure-vm"]
+	path = terraform-azure-vm
+	url = https://github.com/dev-enthusiast-84/terraform-azure-vm.git
+[submodule "terraform-react-azure"]
+	path = terraform-react-azure
+	url = https://github.com/dev-enthusiast-84/terraform-react-azure.git
+[submodule "ha-tt-app"]
+	path = ha-tt-app
+	url = https://github.com/dev-enthusiast-84/ha-tt-app.git
+[submodule "ansible-onboarding"]
+	path = ansible-onboarding
+	url = https://github.com/dev-enthusiast-84/ansible-onboarding.git
+[submodule "DMI-sprint-health"]
+	path = DMI-sprint-health
+	url = https://github.com/dev-enthusiast-84/DMI-sprint-health.git
+[submodule "Pravin-Mishra-Portfolio-Template"]
+	path = Pravin-Mishra-Portfolio-Template
+	url = https://github.com/dev-enthusiast-84/Pravin-Mishra-Portfolio-Template.git
+[submodule "Ultimate-Agentic-DevOps-with-Claude-Code"]
+	path = Ultimate-Agentic-DevOps-with-Claude-Code
+	url = https://github.com/dev-enthusiast-84/Ultimate-Agentic-DevOps-with-Claude-Code.git
+[submodule "devops-micro-internship-interviews"]
+	path = devops-micro-internship-interviews
+	url = https://github.com/dev-enthusiast-84/devops-micro-internship-interviews.git
+[submodule "mini_finance"]
+	path = mini_finance
+	url = https://github.com/dev-enthusiast-84/mini_finance.git
+[submodule "my-react-app"]
+	path = my-react-app
+	url = https://github.com/dev-enthusiast-84/my-react-app.git
+[submodule "2134_gotto_job"]
+	path = 2134_gotto_job
+	url = https://github.com/dev-enthusiast-84/2134_gotto_job.git
+[submodule "CodeTrack"]
+	path = CodeTrack
+	url = https://github.com/dev-enthusiast-84/CodeTrack.git
 [submodule "docker-network-demo-apps"]
 	path = docker-network-demo-apps
 	url = https://github.com/dev-enthusiast-84/docker-network-demo-apps.git
