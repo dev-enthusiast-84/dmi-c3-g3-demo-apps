@@ -43,3 +43,6 @@
 [submodule "docker-network-demo-apps"]
 	path = docker-network-demo-apps
 	url = https://github.com/dev-enthusiast-84/docker-network-demo-apps.git
+[submodule "bash-script-assignment"]
+	path = bash-script-assignment
+	url = https://github.com/dev-enthusiast-84/bash-script-assignment.git
